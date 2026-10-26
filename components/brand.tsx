@@ -1,0 +1,1 @@
+export function Brand(){return <a className="brand boardhub-brand" href="/" aria-label="BoardHub ホーム"><img src="/brand/boardhub-mark.svg" alt="" width="32" height="32"/><span>Board<span className="brand-hub">Hub</span></span></a>}

@@ -1,4 +1,4 @@
-CREATE TABLE `openboard_rooms` (
+CREATE TABLE IF NOT EXISTS `openboard_rooms` (
 	`id` text PRIMARY KEY NOT NULL,
 	`snapshot` text NOT NULL,
 	`revision` integer NOT NULL,

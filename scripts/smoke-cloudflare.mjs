@@ -1,6 +1,10 @@
 import {spawn} from 'node:child_process';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+const emptyState=mkdtempSync(join(tmpdir(),'boardhub-empty-'));
 import assert from 'node:assert/strict';
-const child=spawn(process.execPath,['node_modules/wrangler/bin/wrangler.js','dev','--config','dist/server/wrangler.json','--local','--persist-to','.wrangler/state','--ip','127.0.0.1','--port','8799','--inspector-port','0'],{env:{...process.env,WRANGLER_SEND_METRICS:'false'},stdio:['ignore','pipe','pipe']});
+const child=spawn(process.execPath,['node_modules/wrangler/bin/wrangler.js','dev','--config','dist/server/wrangler.json','--local','--persist-to',emptyState,'--ip','127.0.0.1','--port','8799','--inspector-port','0'],{env:{...process.env,WRANGLER_SEND_METRICS:'false'},stdio:['ignore','pipe','pipe']});
 try{
  await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(Error('Local Worker startup timed out')),45000);const collect=b=>{output+=b;if(output.includes('Ready on')){clearTimeout(timer);resolve()}if(output.includes('ERROR')){clearTimeout(timer);reject(Error(output.slice(-1600)))}};child.stdout.on('data',collect);child.stderr.on('data',collect);child.once('exit',code=>{clearTimeout(timer);reject(Error('Worker exited: '+code+' '+output.slice(-1000)))})});
  const base='http://127.0.0.1:8799';
@@ -12,4 +16,4 @@ try{
  const forged=await fetch(base+'/api/projects?scope=mine',{headers:{Cookie:other.cookie,'oai-authenticated-user-id':project.v.owner,'oai-authenticated-user-email':'admin@example.com'}});assert.equal((await forged.json()).projects.length,0);
  for(const game of ['deckworks','tileworks']){const host=await api('/api/tabletop',{name:'A',game,players:2}),guest=await api('/api/tabletop/'+host.v.id,{type:'join',name:'B'});assert.equal(guest.v.state.phase,'playing');assert.equal(guest.v.state.board.kind,game);assert.deepEqual(guest.v.state.events,[])}
  console.log('PASS: built Worker, D1, creator save/isolation, forged-header rejection and both invite games.');
-}finally{child.kill('SIGTERM')}
+}finally{await new Promise(resolve=>{child.once('exit',resolve);child.kill('SIGTERM');setTimeout(resolve,3000)});rmSync(emptyState,{recursive:true,force:true})}

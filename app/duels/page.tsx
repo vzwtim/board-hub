@@ -1,4 +1,5 @@
 'use client';
+import {resumeState,useSaveGame} from '../../lib/resume';
 import {useEffect,useRef,useState} from 'react';
 import {applyAction,createState,joinState} from '../../engine/core.ts';
 import {duels,legal,botAction,type Kind,type State,type Action} from '../../games/duels/index.ts';
@@ -9,7 +10,8 @@ import {useDialog} from '../../hooks/use-dialog';
 const TITLE={connect4:'四目並べ',reversi:'リバーシ'};
 function seed(kind:Kind){let s=joinState(createState(duels,{id:'0',name:'あなた'}),{id:'1',name:'CPU'});return applyAction(duels,s,{id:'duel-configure',expectedRevision:s.revision,playerID:'0',payload:{type:'configure',game:kind}})}
 export default function DuelPage(){const net=useLiveRoom<State,PlayerID>('/api/duels'),[kind,setKind]=useState<Kind>('connect4'),[mode,setMode]=useState<'menu'|'cpu'|'invite'|'table'>('menu'),[local,setLocal]=useState(()=>seed('connect4')),[name,setName]=useState(''),[motion,setMotion]=useState(false),[rules,setRules]=useState(false),[notice,setNotice]=useState('');const last=useRef(-1);const online=!!net.roomId,live=online?net.room?.state:local,k=live?.board.kind||kind,me=online?net.room?.playerID??null:mode==='table'?live?.currentPlayer||'0':'0',nameOf=(id:string)=>live?.players.find(p=>p.id===id)?.name||'参加待ち';
- useEffect(()=>{if(!net.ready)return;const q=new URLSearchParams(location.search),chosen=q.get('game')==='reversi'?'reversi':'connect4';setKind(chosen);setLocal(seed(chosen));if(q.get('mode')==='cpu')setMode('cpu');if(q.get('mode')==='invite')setMode('invite')},[net.ready]);
+ useSaveGame(kind,kind==='reversi'?'リバーシ':'四目並べ','/duels?game='+kind+'&mode=cpu',local,!online&&(mode==='cpu'||mode==='table'));
+ useEffect(()=>{if(!net.ready)return;const q=new URLSearchParams(location.search),chosen=q.get('game')==='reversi'?'reversi':'connect4';setKind(chosen);setLocal(resumeState<State>(chosen)||seed(chosen));if(q.get('mode')==='cpu')setMode('cpu');if(q.get('mode')==='invite')setMode('invite')},[net.ready]);
  useEffect(()=>{if(!live||last.current===live.revision)return;last.current=live.revision;setMotion(true);if(last.current>2)gameAudio.play(live.phase==='finished'?'finish':k==='reversi'?'capture':'sow');const t=setTimeout(()=>setMotion(false),450);return()=>clearTimeout(t)},[live?.revision,online]);
  useEffect(()=>{if(online||mode!=='cpu'||motion||rules||local.phase!=='playing'||local.currentPlayer!=='1')return;const t=setTimeout(()=>setLocal(s=>applyAction(duels,s,{id:actionID(),expectedRevision:s.revision,playerID:'1',payload:botAction(s.board,'1')})),450);return()=>clearTimeout(t)},[online,mode,motion,local,rules]);
  function start(m:'cpu'|'table'){net.leave();const fresh=seed(kind);if(m==='table'){fresh.players[0].name='プレイヤー1';fresh.players[1].name='プレイヤー2'}setLocal(fresh);last.current=-1;setMotion(false);setMode(m);gameAudio.unlock()}

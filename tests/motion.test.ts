@@ -1,0 +1,6 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {traceMove} from '../games/kalah/animation.ts';
+import {kalah,legalPits} from '../games/kalah/index.ts';
+import {createState,joinState,applyAction} from '../engine/core.ts';
+test('every animation ends at the trusted board; held stones conserve the total',()=>{let rng=883;let capture=false,sweep=false,wrap=false;for(let match=0;match<30;match++){let s=joinState(createState(kalah,{id:'0',name:'A'}),{id:'1',name:'B'});let turn=0;while(s.phase==='playing'&&turn<1500){const options=legalPits(s.board,s.currentPlayer);rng=(Math.imul(rng,1664525)+1013904223)>>>0;const pit=options[rng%options.length],original=structuredClone(s.board),frames=traceMove(s.board,s.currentPlayer,pit);for(const f of frames){assert.equal(f.pits.reduce((a,b)=>a+b)+f.held,48);assert.ok(f.to!== (s.currentPlayer==='0'?13:6)||f.kind==='sweep');capture ||= f.kind==='capture';sweep ||= f.kind==='sweep'}wrap ||= frames.filter(f=>f.kind==='sow').length>12;const next=applyAction(kalah,s,{id:'motion-'+match+'-'+turn++,playerID:s.currentPlayer,expectedRevision:s.revision,payload:{type:'move' as const,pit}});assert.deepEqual(frames.at(-1)!.pits,next.board.pits);assert.deepEqual(s.board,original);s=next}assert.equal(s.phase,'finished')}assert.ok(capture);assert.ok(sweep);assert.ok(wrap)});

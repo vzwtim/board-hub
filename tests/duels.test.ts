@@ -1,0 +1,9 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {duels,legal,botAction,flips,type State,type Action} from '../games/duels/index.ts';
+import {createState,joinState,applyAction,replay} from '../engine/core.ts';
+const seed=(game:'connect4'|'reversi')=>{const s=joinState(createState(duels,{id:'0',name:'A'}),{id:'1',name:'B'});return applyAction(duels,s,{id:'configure',expectedRevision:s.revision,playerID:'0',payload:{type:'configure',game}})};
+const act=(s:State,index:number)=>applyAction(duels,s,{id:'move-'+s.revision,expectedRevision:s.revision,playerID:s.currentPlayer,payload:{type:'play',index} as Action});
+test('connect-four gravity, horizontal win, full column rejection, and replay',()=>{let s=seed('connect4');for(const col of [0,0,1,1,2,2,3])s=act(s,col);assert.equal(s.winner,'0');assert.equal(s.phase,'finished');assert.equal(s.board.win.length,4);assert.deepEqual(replay(duels,s,s.events.length),s);let t=seed('connect4');for(let i=0;i<6;i++)t=act(t,0);assert.ok(!legal(t.board,t.currentPlayer).includes(0));assert.throws(()=>act(t,0))});
+test('reversi legal opening, captures, complete game, automatic passes, and replay',()=>{let s=seed('reversi');assert.deepEqual(legal(s.board,'0'),[19,26,37,44]);s=act(s,19);assert.equal(s.board.cells[27],'0');assert.equal(s.board.changed.length,2);let n=0;while(s.phase==='playing'&&n++<64){const action=botAction(s.board,s.currentPlayer);assert.equal(action.type,'play');s=act(s,(action as {index:number}).index)}assert.equal(s.phase,'finished');assert.ok(s.board.cells.filter(x=>x!==null).length<=64);assert.deepEqual(replay(duels,s,s.events.length),s)});
+test('connect-four bot immediately wins or blocks the opponent',()=>{let s=seed('connect4');for(const c of [0,6,1,6,2,5])s=act(s,c);assert.deepEqual(botAction(s.board,'0'),{type:'play',index:3});let t=seed('connect4');for(const c of [0,6,1,6,2])t=act(t,c);assert.deepEqual(botAction(t.board,'1'),{type:'play',index:3})});

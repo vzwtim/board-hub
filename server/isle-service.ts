@@ -1,0 +1,12 @@
+import {applyAction,createState} from '../engine/core.ts';
+import {RuleError,type PlayerID} from '../engine/types.ts';
+import {isleworks,type IslandBoard,type IslandAction} from '../games/isleworks/index.ts';
+import {newToken,hashToken,cleanName,playerFor,joinRoom,type Room,type RoomStore} from './service.ts';
+export async function createIsland(store:RoomStore<IslandBoard,IslandAction>,name:unknown){const token=newToken(),now=Date.now();const room:Room<IslandBoard,IslandAction>={id:crypto.randomUUID(),state:createState(isleworks,{id:'0',name:cleanName(name)}),credentials:{'0':await hashToken(token)},createdAt:now,updatedAt:now};await store.create(room);return {room,token}}
+export async function getIsland(store:RoomStore<IslandBoard,IslandAction>,id:string){const room=await store.get(id);if(!room||room.state.gameID!=='isleworks')throw new RuleError('NOT_FOUND','島の工房の部屋が見つかりません');return room}
+export async function joinIsland(store:RoomStore<IslandBoard,IslandAction>,id:string,name:unknown){await getIsland(store,id);return joinRoom(store,id,name)}
+export async function actIsland(store:RoomStore<IslandBoard,IslandAction>,id:string,token:string,command:unknown){const room=await getIsland(store,id),playerID=await playerFor(room,token);if(!playerID)throw new RuleError('UNAUTHORIZED','参加者としての認証が必要です');const c=command as {id?:unknown;expectedRevision?:unknown;action?:unknown};if(!c||typeof c.id!=='string'||!/^[a-zA-Z0-9-]{8,80}$/.test(c.id)||!Number.isInteger(c.expectedRevision)||!c.action||typeof c.action!=='object')throw new RuleError('BAD_ACTION','操作データが不正です');
+ const a=c.action as Record<string,unknown>;let payload:IslandAction;
+ switch(a.type){case 'harvest':case 'pass':payload={type:a.type};break;case 'road':if(!Number.isInteger(a.a)||!Number.isInteger(a.b))throw new RuleError('BAD_ACTION','道の位置が不正です');payload={type:'road',a:a.a as number,b:a.b as number};break;case 'camp':case 'upgrade':if(!Number.isInteger(a.tile))throw new RuleError('BAD_ACTION','土地の位置が不正です');payload={type:a.type,tile:a.tile as number};break;case 'trade':payload={type:'trade',give:a.give as 'wood',take:a.take as 'clay'};break;default:throw new RuleError('BAD_ACTION','対応していない操作です')}
+ const prev=room.state.revision;room.state=applyAction(isleworks,room.state,{id:c.id,expectedRevision:c.expectedRevision as number,playerID,payload});if(prev===room.state.revision)return room;room.updatedAt=Date.now();if(!await store.replace(room,prev))throw new RuleError('STALE_STATE','盤面が更新されました。最新の盤面で選び直してください');return room;
+}

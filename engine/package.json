@@ -1,0 +1,10 @@
+{
+  "name":"@openboard/engine",
+  "version":"0.1.0",
+  "description":"Deterministic, transport-independent turn-based board game core",
+  "type":"module",
+  "license":"MIT",
+  "exports":{".":"./core.ts","./types":"./types.ts"},
+  "files":["core.ts","types.ts","LICENSE"],
+  "sideEffects":false
+}

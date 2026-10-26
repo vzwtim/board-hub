@@ -1,0 +1,4 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {creatorToken,guestIdentity,CREATOR_COOKIE} from '../server/guest-identity.ts';
+test('creator identity derives from a private browser key, never supplied identity headers',()=>{const a='a'.repeat(64),b='b'.repeat(64),request=(token:string)=>new Request('https://table.example/studio',{headers:{cookie:CREATOR_COOKIE+'='+token,'oai-authenticated-user-id':'forged-admin'}});assert.equal(creatorToken(request('broken')),null);assert.equal(guestIdentity(request('broken')),null);const one=guestIdentity(request(a))!;assert.ok(!one.id.includes(a));assert.notEqual(one.id,guestIdentity(request(b))!.id);assert.equal(one.admin,false);assert.equal(guestIdentity(request(a),one.id)!.admin,true);assert.equal(guestIdentity(request(b),one.id)!.admin,false)});

@@ -15,7 +15,7 @@
     {
       "binding": "DB",
       "database_name": "openboard-table-db",
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "91fcfc64-31db-4857-9ef7-f9d66a75f532",
       "migrations_dir": "drizzle"
     }
   ],

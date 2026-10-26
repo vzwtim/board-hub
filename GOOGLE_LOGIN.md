@@ -41,3 +41,11 @@ Buildsのdeploy commandを `pnpm run deploy` に設定して再デプロイし�
 Googleログインのボタンは「準備中」と表示し、未接続のログイン画面へ誘導しません。
 
 Google公式：[OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect)。
+
+## すでに Builds → Variables and secrets に登録した場合
+
+その値はビルド環境にだけ渡されます。Deploy command を `pnpm run deploy` にすると、
+このリポジトリのデプロイスクリプトが Client ID・Origin・管理者メールを本番設定へ渡し、
+Client secret を Wrangler の標準入力経由で Worker の Secret に登録します。
+Secret の値は生成設定ファイルやログへ出しません。
+Worker の実行時設定に直接登録してある場合も、その設定を維持します。

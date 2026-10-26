@@ -1,0 +1,1 @@
+export function MobileBrand(){return <a className="mobile-header-brand" href="/" aria-label="BoardHub ホーム"><img src="/brand/boardhub-mark.svg" width="25" height="25" alt=""/><span>Board<span>Hub</span></span></a>}

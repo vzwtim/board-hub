@@ -1,4 +1,5 @@
 'use client';
+import {resumeState,useSaveGame} from '../../lib/resume';
 import {useEffect,useRef,useState} from 'react';
 import {applyAction,createState,joinState} from '../../engine/core.ts';
 import {frontier,botAction,botThought,chanceAction,secureInt,SEATS,type State,type Seat,type Action} from '../../games/frontier/index.ts';
@@ -12,8 +13,9 @@ import {gameAudio} from '../../lib/game-audio';
 function seedGame(count:number,seed:number,randomOrder=false){let s=createState(frontier,{id:'0',name:'あなた'});for(let i=1;i<count;i++)s=joinState(s,{id:SEATS[i],name:'CPU '+i},count);return applyAction(frontier,s,{id:'map-configure',expectedRevision:s.revision,playerID:'0',payload:randomOrder?chanceAction(s.board,'0',{type:'configure',seed,players:count},secureInt):{type:'configure' as const,seed,players:count}})}
 export default function FrontierPage(){const net=useLiveRoom<State,Seat>('/api/frontier'),[mode,setMode]=useState<'menu'|'cpu'|'invite'>('menu'),[local,setLocal]=useState(()=>seedGame(4,17)),[count,setCount]=useState(4),[name,setName]=useState(''),[rules,setRules]=useState<false|'rules'|'cards'|'tutorial'>(false),[motion,setMotion]=useState(false),[notice,setNotice]=useState(''),[orderSeen,setOrderSeen]=useState(''),[cpuComment,setCpuComment]=useState<{revision:number;player:Seat;text:string}|null>(null);const rev=useRef(-1),timer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const online=!!net.roomId,live=online?net.room?.state:local,me=online?net.room?.playerID??null:'0';
+ useSaveGame('frontier','島の工房','/frontier?mode=cpu',local,!online&&mode==='cpu');
  const orderKey=(net.roomId||'cpu')+':'+live?.board.seed,orderOpen=!!((online||mode==='cpu')&&live?.board.orderRolls&&orderSeen!==orderKey);
- useEffect(()=>{if(!net.ready)return;const q=new URLSearchParams(location.search);if(q.get('mode')==='cpu')start();if(q.get('mode')==='invite')setMode('invite');if(q.get('guide'))setRules('tutorial')},[net.ready]);
+ useEffect(()=>{if(!net.ready)return;const q=new URLSearchParams(location.search);if(q.get('mode')==='cpu'){const saved=resumeState<State>('frontier');if(saved){setLocal(saved);setMode('cpu')}else start();}if(q.get('mode')==='invite')setMode('invite');if(q.get('guide'))setRules('tutorial')},[net.ready]);
  useEffect(()=>{if(!live||rev.current===live.revision)return;rev.current=live.revision;setMotion(true);if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>setMotion(false),matchMedia('(prefers-reduced-motion: reduce)').matches?80:live?feedbackDuration(live.board):650);return()=>{if(timer.current)clearTimeout(timer.current)}},[live?.revision,online]);
  useEffect(()=>{if(online||mode!=='cpu'||rules||orderOpen||motion||!net.ready||local.phase!=='playing'||local.currentPlayer==='0')return;const t=setTimeout(()=>{const p=local.currentPlayer,choice=botAction(local.board,p),a=chanceAction(local.board,p,choice,secureInt);setCpuComment({revision:local.revision+1,player:p,text:botThought(local.board,p,choice)});setLocal(s=>s.revision===local.revision?applyAction(frontier,s,{id:actionID(),expectedRevision:s.revision,playerID:p,payload:a}):s)},650);return()=>clearTimeout(t)},[local,online,mode,motion,rules,orderOpen,net.ready]);
  function start(){net.leave();setLocal(seedGame(count,secureInt(2147483647),true));setMode('cpu');setMotion(false);rev.current=-1;gameAudio.unlock()}

@@ -1,7 +1,7 @@
 /** Engine state is server-owned. Clients send actions, never a replacement state. */
 export type PlayerID='0'|'1';
 export type TurnPhase='lobby'|'playing'|'finished';
-export interface Player<P extends string=PlayerID>{id:P;name:string}
+export interface Player<P extends string=PlayerID>{id:P;name:string;avatar?:string}
 export interface MoveAction{type:'move';pit:number}
 export interface Action<A,P extends string=PlayerID>{id:string;playerID:P;expectedRevision:number;payload:A}
 export interface Transition<G,P extends string=PlayerID>{board:G;nextPlayer:P;winner?:P|'draw'}

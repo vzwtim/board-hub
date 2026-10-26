@@ -1,0 +1,7 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {UserRound} from 'lucide-react';
+import {useAccount} from './account-provider';
+export function Avatar({src,name='',size=32}:{src?:string;name?:string;size?:number}){const [failed,setFailed]=useState(false);useEffect(()=>setFailed(false),[src]);return <span className="avatar-circle" style={{width:size,height:size}}>{src&&!failed?<img src={src} alt="" referrerPolicy="no-referrer" onError={()=>setFailed(true)}/>:name?<span>{name.slice(0,1)}</span>:<UserRound size={Math.round(size*.5)}/>}</span>}
+export function AccountAvatar(){const {user}=useAccount();return <a href="/account#profile-settings" className="account-avatar-link" aria-label="自分のアイコン：プロフィール設定" title="プロフィール設定"><Avatar src={user?.avatar} name={user?.name}/></a>}
+export function PlayerAvatar({self=false,name='',src}:{self?:boolean;name?:string;src?:string}){const {user}=useAccount(),photo=self?user?.avatar||src:src;if(!photo)return null;const image=<Avatar src={photo} name={self?user?.name||name:name} size={22}/>;return self?<a href="/account#profile-settings" className="player-profile-link" aria-label="自分のプロフィール設定">{image}</a>:image}

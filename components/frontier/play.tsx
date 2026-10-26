@@ -23,7 +23,7 @@ export function FrontierPlay({state,me,busy,onAction,onRules,cpuComment,fastCPU=
  useEffect(()=>{try{const d=JSON.parse(localStorage.getItem('boardhub-frontier-trade-draft')||'null');const valid=(v:Bag)=>v&&RES.every(r=>Number.isInteger(v[r])&&v[r]>=0&&v[r]<=19);if(d&&valid(d.give)&&valid(d.take)){setGiveBag(d.give);setTakeBag(d.take);if(d.to==='all'||players(b).includes(d.to)&&d.to!==p)setTo(d.to)}}catch{}setDraftReady(true)},[]);
  useEffect(()=>{if(draftReady)try{localStorage.setItem('boardhub-frontier-trade-draft',JSON.stringify({give:giveBag,take:takeBag,to}))}catch{}},[giveBag,takeBag,to,draftReady]);
  useEffect(()=>{setSelected(null);setEdge(null);setDiscard(empty());setTile(null);setVictim('');setPhaseTab('main')},[b.phase,state.currentPlayer]);
- useEffect(()=>{if(b.phase==='trade-response'&&b.offer&&state.currentPlayer===p){setCounterGive({...b.offer.take});setCounterTake({...b.offer.give})}},[b.offer,state.currentPlayer,p]);
+ useEffect(()=>{if(b.phase==='trade-response'&&b.offer&&state.currentPlayer===p){setCounterGive({...b.offer.take});setCounterTake({...b.offer.give})}},[state.revision,state.currentPlayer,p]);
  useEffect(()=>{gameAudio.play(state.phase==='finished'?'finish':b.last.type==='roll'?'pickup':b.last.type==='road'?'sow':['camp','city','card'].includes(b.last.type)?'capture':'turn')},[state.revision]);
  useEffect(()=>{const unlock=()=>gameAudio.unlock();window.addEventListener('pointerdown',unlock);return()=>window.removeEventListener('pointerdown',unlock)},[]);
  useEffect(()=>{setSelected(null);setEdge(null)},[state.revision]);

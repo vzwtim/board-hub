@@ -10,3 +10,10 @@ Sources reviewed: [Carbon modal guidelines](https://www.carbondesignsystem.com/b
 - Shared game toolbar: back affordance and game title on the left, help/history/audio and identity on the right. Desktop height 64px, mobile 56px. A divider separates game tools from identity.
 - Chrome stays neutral; blue communicates an active or primary action. Titles and action groups may not wrap or change toolbar height. Long game names truncate while controls remain visible.
 - Every icon button has an accessible name, hover description and visible keyboard focus. Reduced-motion preference removes dialog entrance animation.
+
+## Player surfaces
+
+- My Page is a game library. Do not introduce an identity hero, public-profile card or duplicate profile settings row. The top account icon owns profile access.
+- Home prioritizes immediately playable games and saved matches. Personal statistics belong in My Page; unfinished feature placeholders should not displace playable content.
+- Direct game-card actions resume an existing saved match when available. Details remain a secondary action for rules and invite play.
+- Empty, loading and error states must be distinct. Local favorite games must not wait for unrelated community-server requests.

@@ -15,5 +15,40 @@ try{await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()
  const photo='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=';await api('/api/account/profile',{avatar:photo},cookie(0));assert.equal((await api('/api/auth/session',undefined,cookie(0))).v.user.avatar,photo);assert.equal((await api('/api/auth/session',undefined,cookie(0))).v.user.name,'New Display Name');assert.equal((await api('/api/auth/session',undefined,cookie(1))).v.user.avatar,'');await api('/api/account/profile',{avatar:'https://example.test/a.svg'},cookie(0),400);await api('/api/account/profile',{avatar:''},cookie(0));assert.equal((await api('/api/auth/session',undefined,cookie(0))).v.user.avatar,'');
  const spec={schema:1,title:'Account smoke project',description:'Local only',columns:3,rows:3,connect:3,gravity:false,blocked:[],accent:'#0071e3'},project=(await api('/api/projects',{spec},cookie(0),201)).v;assert.equal(project.owner,'smoke-account-a');await api('/api/projects/'+project.id,{type:'publish',listed:true,expectedRevision:project.revision},cookie(1),401);await api('/api/favorites',{id:'project:'+project.id,saved:true},cookie(1),404);assert.equal((await api('/api/favorites/projects',{ids:[project.id]},cookie(1))).v.projects.length,0);assert.equal((await api('/api/favorites/projects',{ids:[project.id]},cookie(0))).v.projects.length,1);
  const flow=await fetch(base+'/api/auth/google?next=%2Fstudio',{redirect:'manual'}),target=new URL(flow.headers.get('location'));assert.equal(target.origin,'https://accounts.google.com');assert.equal(target.searchParams.get('code_challenge_method'),'S256');const state=target.searchParams.get('state'),flowCookie=flow.headers.get('set-cookie').split(';')[0];const denied=await fetch(base+'/api/auth/google/callback?state='+state+'&error=access_denied',{redirect:'manual',headers:{Cookie:flowCookie}});assert.ok(denied.headers.get('location').endsWith('?auth=cancelled'));const replay=await fetch(base+'/api/auth/google/callback?state='+state+'&error=access_denied',{redirect:'manual',headers:{Cookie:flowCookie}});assert.ok(replay.headers.get('location').endsWith('?auth=expired'));
+
+ // Invitations deliberately have no participant until account/guest choice. Guest headers override a signed-in cookie.
+ async function roomApi(path,data,headers={},status=200){const r=await fetch(base+path,{method:data?'POST':'GET',headers:{...headers,...(data?{'Content-Type':'application/json',Origin:base}:{})},body:data?JSON.stringify(data):undefined});const v=await r.json();assert.equal(r.status,status,JSON.stringify(v));assert.ok(!('credentials' in v)&&!('identities' in v));return v}
+ const a={Cookie:cookie(0),'X-BoardHub-Account':'smoke-account-a'},b={Cookie:cookie(1),'X-BoardHub-Account':'smoke-account-b'},g1={'X-BoardHub-Guest':crypto.randomUUID()},g2={'X-BoardHub-Guest':crypto.randomUUID()};
+ const host=await roomApi('/api/duels',{name:'ignored',game:'connect4'},a,201),path='/api/duels/'+host.id;
+ assert.equal(host.playerID,'0');assert.equal(host.state.players[0].name,'New Display Name');
+ assert.equal((await roomApi(path,undefined,{...a,'X-BoardHub-View':'invite'})).playerID,null);
+ assert.equal((await roomApi(path,undefined,b)).playerID,null);
+ assert.equal((await roomApi(path,{type:'join',name:'ignored'},a)).state.players.length,1);
+ const friend=await roomApi(path,{type:'join',name:'Bob'},b);assert.equal(friend.playerID,'1');assert.equal(friend.state.phase,'playing');
+ assert.equal((await roomApi(path,undefined,a)).playerID,'0');assert.equal((await roomApi(path,undefined,b)).playerID,'1');
+ const moveA=await roomApi(path,{type:'act',id:'smoke-identity-a',expectedRevision:friend.state.revision,action:{type:'play',index:0}},a);
+ const moveB=await roomApi(path,{type:'act',id:'smoke-identity-b',expectedRevision:moveA.state.revision,action:{type:'play',index:1}},b);assert.equal(moveB.state.currentPlayer,'0');
+ await roomApi(path,undefined,{'X-BoardHub-Account':'smoke-account-a'},401);
+ assert.equal((await roomApi(path,undefined,{...b,Authorization:'Bearer '+host.token})).playerID,'1');
+ const guestHost=await roomApi('/api/duels',{name:'Host guest',game:'connect4'},g1,201),gp='/api/duels/'+guestHost.id;
+ const guestFriend=await roomApi(gp,{type:'join',name:'Friend guest'},{...a,...g2});assert.equal(guestFriend.playerID,'1');assert.equal(guestFriend.state.players[1].name,'Friend guest');
+ const ga={...g1,Authorization:'Bearer '+guestHost.token},gb={...g2,Authorization:'Bearer '+guestFriend.token};
+ assert.equal((await roomApi(gp,undefined,ga)).playerID,'0');assert.equal((await roomApi(gp,undefined,gb)).playerID,'1');
+ assert.equal((await roomApi(gp,undefined,{...g2,Authorization:'Bearer '+guestHost.token})).playerID,null);
+ await roomApi(gp,{type:'act',id:'smoke-guest-forged',expectedRevision:guestFriend.state.revision,action:{type:'play',index:0}},{...g2,Authorization:'Bearer '+guestHost.token},401);
+ const guestMove=await roomApi(gp,{type:'act',id:'smoke-guest-a',expectedRevision:guestFriend.state.revision,action:{type:'play',index:0}},ga);
+ await roomApi(gp,{type:'act',id:'smoke-guest-b',expectedRevision:guestMove.state.revision,action:{type:'play',index:1}},gb);
+ // Every supported invitation service binds both seats, including private-hand projections.
+ await api('/api/projects/'+project.id,{type:'publish',listed:true,expectedRevision:project.revision},cookie(0));
+ for(const [endpoint,config] of [['rooms',{}],['frontier',{players:2}],['tabletop',{game:'deckworks',players:2}],['tabletop',{game:'tileworks',players:2}],['community-rooms',{project:project.id,ref:''}],['isles',{}]]){
+  const h=await roomApi('/api/'+endpoint,{name:'Host',...config},a,201),p='/api/'+endpoint+'/'+h.id;
+  assert.equal((await roomApi(p,undefined,a)).playerID,'0',endpoint+' account restore');
+  const j=await roomApi(p,{type:'join',name:'Friend'},g2);assert.equal(j.playerID,'1',endpoint+' guest join');assert.equal(j.state.phase,'playing');
+  assert.equal((await roomApi(p,undefined,{...g2,Authorization:'Bearer '+j.token})).playerID,'1',endpoint+' guest restore');
+ }
+ const four=await roomApi('/api/frontier',{name:'Host',players:4},g1,201);let full;
+ for(let n=1;n<4;n++)full=await roomApi('/api/frontier/'+four.id,{type:'join',name:'Friend '+n},{'X-BoardHub-Guest':crypto.randomUUID()});
+ assert.equal(full.state.players.length,4);assert.equal(full.state.phase,'playing');
+ console.log('PASS: account and guest invitations, isolated seats, idempotent rejoin, two-player turns, reload recovery, private credential filtering and all multiplayer services (2–4 players).');
  await api('/api/auth/logout',{},cookie(0));assert.equal((await api('/api/auth/session',undefined,cookie(0))).v.user,null);console.log('PASS: account sessions, expiry/logout, favorites isolation, project access, display name, OAuth PKCE/state/cancellation/replay.');
 }finally{child.kill('SIGTERM')}

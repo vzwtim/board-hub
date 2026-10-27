@@ -1,6 +1,8 @@
-import {currentAccount} from '../../../../server/account-store.ts';
+import {RuleError} from '../../../../engine/types.ts';
+import {roomParticipant} from '../../../../server/room-participant.ts';
 import {communityStore} from '../../../../server/community-store.ts';
-import {getCommunity,joinCommunity,actCommunity} from '../../../../server/community-service.ts';
-import {body,error,response,view,tokenFrom} from '../../../../server/http.ts';
-export async function GET(r:Request,{params}:{params:Promise<{id:string}>}){try{return response(await view(await getCommunity(communityStore,(await params).id),tokenFrom(r)))}catch(e){return error(e)}}
-export async function POST(r:Request,{params}:{params:Promise<{id:string}>}){try{const account=await currentAccount(r);const b=await body(r),id=(await params).id;if(b.type==='join'){const v=await joinCommunity(communityStore,id,b.name,account?'/api/avatars/'+account.id:'');return response({...await view(v.room,v.token),token:v.token})}return response(await view(await actCommunity(communityStore,id,tokenFrom(r),b),tokenFrom(r)))}catch(e){return error(e)}}
+import {joinCommunity,actCommunity,getCommunity} from '../../../../server/community-service.ts';
+import {body,error,response,tokenFrom,view} from '../../../../server/http.ts';
+type Context={params:Promise<{id:string}>};
+export async function GET(r:Request,c:Context){try{const {id}=await c.params,identity=await roomParticipant(r);return response(await view(await getCommunity(communityStore,id),tokenFrom(r),identity))}catch(e){return error(e)}}
+export async function POST(r:Request,c:Context){try{const {id}=await c.params,b=await body(r),identity=await roomParticipant(r);if(b.type==='join'){const v=await joinCommunity(communityStore,id,identity?.name||b.name||'ゲスト',identity?.avatar||'',identity);return response({...await view(v.room,v.token,identity),...(v.token?{token:v.token}:{})})}if(b.type==='act')return response(await view(await actCommunity(communityStore,id,tokenFrom(r),b,identity),tokenFrom(r),identity));throw new RuleError('BAD_ACTION','対応していない操作です')}catch(e){return error(e)}}

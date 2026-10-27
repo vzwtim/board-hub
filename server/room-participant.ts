@@ -1,0 +1,4 @@
+import {currentAccount} from './account-store.ts';
+import {RuleError} from '../engine/types.ts';
+import type {RoomIdentity} from './room-identity.ts';
+export async function roomParticipant(r:Request):Promise<(RoomIdentity&{name?:string;avatar?:string})|undefined>{if(r.method==='GET'&&r.headers.get('x-boardhub-view')==='invite')return undefined;const guest=r.headers.get('x-boardhub-guest');if(guest){if(!/^[a-f0-9-]{36}$/.test(guest))throw new RuleError('IDENTITY','ゲストの参加情報が不正です');return {kind:'guest',id:guest}}const account=await currentAccount(r);const expected=r.headers.get('x-boardhub-account');if(expected&&(!account||account.id!==expected))throw new RuleError('UNAUTHORIZED','ログイン状態が変わりました。もう一度参加方法を選んでください');return account?{kind:'account',id:account.id,name:account.name.slice(0,24),avatar:'/api/avatars/'+account.id}:undefined}

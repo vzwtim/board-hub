@@ -173,3 +173,5 @@ button.account-avatar-link{padding:0;min-height:36px;transition:background .15s,
 /* Small library thumbnails show a scaled board, not a cropped title. */
 .library-resume-art>.game-preview{width:240px;height:180px;transform:scale(.333333);transform-origin:top left}.library-row-art>.game-preview{width:240px;height:180px;transform:scale(.3);transform-origin:top left}.library-resume-art,.library-row-art{display:block;background:#e9edf4}.library-resume-art .preview-caption,.library-row-art .preview-caption{display:none}.library-panel{min-height:0}.detail-modes>.detail-resume{grid-column:1/-1;background:#eaf3fc;border-color:#d3e4f7}.detail-modes>.detail-resume>strong{color:#2269aa}
 @media(max-width:760px){.library-resume-art>.game-preview{transform:scale(.277778)}.library-row-art>.game-preview{transform:scale(.244445)}}
+
+.library-resume-art,.library-row-art{position:relative}.library-resume-art>.game-preview,.library-row-art>.game-preview{position:absolute;inset:0 auto auto 0;margin:0}

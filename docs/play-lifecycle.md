@@ -14,3 +14,7 @@ References: https://web.dev/learn/pwa/installation-prompt and https://developer.
 ## Verification
 
 Unit tests cover allowlisted return navigation, query preservation, removal/undo/background suppression, fresh successor state, private seat transfer, capacity restrictions, community rematch, authorization and concurrent successor selection. The built Worker/D1 smoke test completes real matches, changes games with two accounts, takes turns in the successor, rematches two guests, and checks the manifest and PNG assets.
+
+## Unified game setup
+
+Catalog cards have one `遊ぶ` action; the artwork and title open the same setup sheet. Information, player count, mode, guest host name and the start action live in this sheet. CPU/same-screen selections launch the chosen game and player count directly; invitations are created from the sheet and open the host's room with its scoped credentials already stored. The old second `詳細` action and the link to another mode menu are removed. Direct built-in game entry pages and My Page use the same setup component. Saved games retain a separate, explicit continuation link.

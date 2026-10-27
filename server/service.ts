@@ -1,9 +1,10 @@
+import type {NextGame} from '../lib/next-game.ts';
 import {accountSeat,bindSeat,assertNewGuest,type RoomIdentity} from './room-identity.ts';
 import { applyAction, createState, joinState } from '../engine/core.ts';
 import { RuleError, type GameState, type MoveAction, type PlayerID } from '../engine/types.ts';
 import { kalah, type KalahBoard } from '../games/kalah/index.ts';
 export type State=GameState<KalahBoard,MoveAction>;
-export interface Room<G=KalahBoard,A=MoveAction,P extends string=PlayerID> {id:string;state:GameState<G,A,P>;credentials:Record<string,string>;identities?:Record<string,RoomIdentity>;createdAt:number;updatedAt:number}
+export interface Room<G=KalahBoard,A=MoveAction,P extends string=PlayerID> {id:string;state:GameState<G,A,P>;credentials:Record<string,string>;identities?:Record<string,RoomIdentity>;createdAt:number;updatedAt:number;nextGame?:NextGame}
 export interface RoomStore<G=KalahBoard,A=MoveAction,P extends string=PlayerID> {get(id:string):Promise<Room<G,A,P>|null>;create(room:Room<G,A,P>):Promise<void>;replace(room:Room<G,A,P>,expectedRevision:number):Promise<boolean>}
 export const newToken=()=>crypto.randomUUID()+crypto.randomUUID();
 export async function hashToken(token:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token));return Array.from(new Uint8Array(b),x=>x.toString(16).padStart(2,'0')).join('')}

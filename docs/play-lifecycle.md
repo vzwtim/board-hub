@@ -18,3 +18,11 @@ Unit tests cover allowlisted return navigation, query preservation, removal/undo
 ## Unified game setup
 
 Catalog cards have one `遊ぶ` action; the artwork and title open the same setup sheet. Information, player count, mode, guest host name and the start action live in this sheet. CPU/same-screen selections launch the chosen game and player count directly; invitations are created from the sheet and open the host's room with its scoped credentials already stored. The old second `詳細` action and the link to another mode menu are removed. Direct built-in game entry pages and My Page use the same setup component. Saved games retain a separate, explicit continuation link.
+
+## Desktop play and results
+
+On screens at least 1100 CSS pixels wide, Frontier exposes construction, player trading, bank/port trading and development cards together in a dock below the board. Dice/cards and incoming offer/counteroffer pairs also stay side by side. Smaller screens retain one set of tab controls and touch targets. Fine-pointer map markers appear on hover or keyboard focus, and selected markers remain visible; touch devices keep discoverable candidate markers. Buildings and completed roads are always visible.
+
+CPU trade planning enumerates feasible surplus/need packages for its current goal, including equal exchanges, unequal exchanges and mixed bundles. It compares own marginal value with public production estimates and varies among viable conditions by seat/round/game. It never reads opponents' private resources or development cards. Counteroffers can change the resource combination instead of always adding one requested card. Unit tests check legality, privacy, deterministic replay and diversity across resource packages.
+
+A completed game keeps its final board mounted. Results, rematch and next-game choices are presented in a dismissible dialog, with a persistent reopen entry. Deck/tile games render their actual final board read-only instead of replacing it with the score sheet.

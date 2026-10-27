@@ -7,6 +7,7 @@ import {ProfileTrigger} from '../../components/profile-context';
 import {MobileBrand} from '../../components/mobile-brand';
 import {useAccount} from '../../components/account-provider';
 import {ResumeGames,LibraryGameRow,usePlayerLibrary} from '../../components/player-library';
+import {InstallShortcut} from '../../components/install-prompt';
 import {PlayCalendar} from '../../components/play-calendar';
 import {games} from '../../lib/game-catalog';
 import {projectRequest,type ProjectSummary} from '../../lib/projects';
@@ -24,5 +25,5 @@ export default function AccountPage(){const {favorites,user,ready:accountReady,f
  </section>
  {accountReady&&!user&&<p className="library-device-note">お気に入りはこの端末に保存されています。<ProfileTrigger label="ログインしてお気に入りを同期">ログインして端末間で同期</ProfileTrigger></p>}
  <a href="/studio" className="library-creator-link"><GitBranch size={18}/><span>自分の作品<small>ゲームをつくる・管理する</small></span><ChevronRight size={17}/></a>
- <footer><span>BoardHub · 遊ぶ。つくる。育てる。</span><a href="/community">ゲームを探す</a></footer></main></div>
+ <InstallShortcut/><footer><span>BoardHub · 遊ぶ。つくる。育てる。</span><a href="/community">ゲームを探す</a></footer></main></div>
 }

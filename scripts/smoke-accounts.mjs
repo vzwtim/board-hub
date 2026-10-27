@@ -49,6 +49,21 @@ try{await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()
  const four=await roomApi('/api/frontier',{name:'Host',players:4},g1,201);let full;
  for(let n=1;n<4;n++)full=await roomApi('/api/frontier/'+four.id,{type:'join',name:'Friend '+n},{'X-BoardHub-Guest':crypto.randomUUID()});
  assert.equal(full.state.players.length,4);assert.equal(full.state.phase,'playing');
+
+ // Finish a live match, retain the party across a different game and a rematch.
+ let ending=moveB;while(ending.state.phase==='playing'){const turn=ending.state.currentPlayer;ending=await roomApi(path,{type:'act',id:crypto.randomUUID(),expectedRevision:ending.state.revision,action:{type:'play',index:turn==='0'?0:1}},turn==='0'?a:b)}
+ const successor=(await roomApi('/api/rooms/'+host.id+'/next',{game:'kalah'},a)).nextGame;
+ assert.equal((await roomApi(path,undefined,b)).nextGame.id,successor.id);
+ const continuedA=await roomApi(successor.api+'/'+successor.id,undefined,a),continuedB=await roomApi(successor.api+'/'+successor.id,undefined,b);assert.equal(continuedA.playerID,'0');assert.equal(continuedB.playerID,'1');assert.equal(continuedA.state.gameID,'kalah');assert.deepEqual(continuedA.state.players.map(p=>p.name),ending.state.players.map(p=>p.name));
+ assert.equal((await roomApi('/api/rooms/'+host.id+'/next',{game:'reversi'},b)).nextGame.id,successor.id);
+ await roomApi('/api/rooms/'+successor.id+'/next',{game:'same'},a,400);
+ const nextMoved=await roomApi(successor.api+'/'+successor.id,{type:'move',id:crypto.randomUUID(),expectedRevision:continuedA.state.revision,pit:0},a);assert.equal(nextMoved.state.currentPlayer,'1');
+ await roomApi(successor.api+'/'+successor.id,{type:'move',id:crypto.randomUUID(),expectedRevision:nextMoved.state.revision,pit:7},b);
+ let guestEnding=await roomApi(gp,undefined,ga);while(guestEnding.state.phase==='playing'){const turn=guestEnding.state.currentPlayer;guestEnding=await roomApi(gp,{type:'act',id:crypto.randomUUID(),expectedRevision:guestEnding.state.revision,action:{type:'play',index:turn==='0'?0:1}},turn==='0'?ga:gb)}
+ await roomApi('/api/rooms/'+guestHost.id+'/next',{game:'same'},{},401);
+ const rematch=(await roomApi('/api/rooms/'+guestHost.id+'/next',{game:'same'},ga)).nextGame;assert.equal((await roomApi(rematch.api+'/'+rematch.id,undefined,ga)).playerID,'0');assert.equal((await roomApi(rematch.api+'/'+rematch.id,undefined,gb)).playerID,'1');
+ const manifest=await (await fetch(base+'/manifest.webmanifest')).json();assert.equal(manifest.display,'standalone');for(const icon of manifest.icons){const png=await fetch(base+icon.src);assert.equal(png.status,200);assert.equal(new Uint8Array(await png.arrayBuffer())[0],137)}
+ console.log('PASS: finished-match successor, idempotent party transition, account and guest seat transfer, cross-game turns, rematch, install manifest and PNG assets.');
  console.log('PASS: account and guest invitations, isolated seats, idempotent rejoin, two-player turns, reload recovery, private credential filtering and all multiplayer services (2–4 players).');
  await api('/api/auth/logout',{},cookie(0));assert.equal((await api('/api/auth/session',undefined,cookie(0))).v.user,null);console.log('PASS: account sessions, expiry/logout, favorites isolation, project access, display name, OAuth PKCE/state/cancellation/replay.');
 }finally{child.kill('SIGTERM')}

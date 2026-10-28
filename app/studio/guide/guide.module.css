@@ -1,0 +1,7 @@
+.steps h2 { font-size: 17px; line-height: 1.6; margin: 0 0 12px; }
+.steps p { font-size: 13px; color: #586b80; }
+@media (max-width: 760px) {
+  .steps { grid-template-columns: 1fr; }
+  .steps h2 { font-size: 16px; }
+  .steps p { font-size: 12px; }
+}

@@ -1,4 +1,5 @@
 'use client';
+import {PublishedCodeGames} from './code-platform/project-list';
 import {AccountAvatar} from './avatar';
 import {ProfileTrigger} from './profile-context';
 import {GameSetup} from './game-setup';
@@ -42,7 +43,7 @@ export function GameBrowser({explore=false,initialSource='all'}:{explore?:boolea
  {explore&&source==='community'&&!projects.length&&!busy&&!loadError&&<div className="creator-invitation"><GitBranch/><h3>最初の公開作品をつくろう。</h3><p>AIとルールを育て、みんなに遊んでもらえます。</p><a href="/studio" className="button">プロジェクトを始める</a></div>}
  {explore&&next!==null&&source!=='favorites'&&source!=='official'&&<button className="load-more" disabled={busy} onClick={()=>void load(next)}>{busy?'読み込み中…':'さらにゲームを読み込む'}</button>}
  {!explore&&<a className="explore-more" href="/community"><Globe2 size={20}/><span>もっとゲームを見つける<small>すべての公開ゲーム・お気に入り</small></span><ArrowUpRight size={18}/></a>}
- </section><footer><span>BoardHub · 遊ぶ。つくる。育てる。</span><a href="/engine">オープンなゲームエンジン</a></footer></main>
+ </section>{explore&&<PublishedCodeGames/>}<footer><span>BoardHub · 遊ぶ。つくる。育てる。</span><a href="/engine">オープンなゲームエンジン</a></footer></main>
  {detail&&<div className="modal" onClick={e=>{if(e.target===e.currentTarget)setDetail(null)}}><section className="modalbox game-setup-sheet" role="dialog" aria-modal="true" aria-label={detail.title+'のゲーム設定'}><GameSetup key={detail.id} game={detail} onClose={()=>setDetail(null)}/></section></div>}
  {invite&&<div className="modal"><section className="modalbox invite-sheet" role="dialog" aria-modal="true" aria-label="招待リンクを開く"><div className="sectionhead"><h2>招待されたゲームへ</h2><button aria-label="閉じる" onClick={()=>setInvite(false)}><X size={20}/></button></div><p className="muted">受け取ったリンクから、ゲームと対戦ルームを開きます。</p><label htmlFor="invite-link">招待リンク</label><input id="invite-link" type="url" value={link} placeholder="https://…?room=…" onChange={e=>{setLink(e.target.value);setJoinError('')}} onKeyDown={e=>{if(e.key==='Enter'&&link.trim())join()}}/>{joinError&&<p className="error">{joinError}</p>}<button className="primary full" disabled={!link.trim()} onClick={join}>ルームを開く</button></section></div>}</div>
 }

@@ -12,8 +12,11 @@ export default {
   for(const key of [...headers.keys()])if(key.startsWith('oai-authenticated-'))headers.delete(key);
   if(fresh)headers.set('cookie',(headers.get('cookie')||'').split(';').filter(x=>!x.trim().startsWith(CREATOR_COOKIE+'=')).concat(CREATOR_COOKIE+'='+token).join('; '));
   const result=await handler.fetch(new Request(request,{headers}),env,ctx);
-  if(!fresh)return result;
+  const isCodeGame=new URL(request.url).pathname.startsWith('/code-games/');
+  if(!fresh&&!isCodeGame)return result;
   const response=new Response(result.body,result);
+  if(isCodeGame)response.headers.set('Content-Security-Policy',"frame-src 'self'; object-src 'none'; base-uri 'self'");
+  if(!fresh)return response;
   response.headers.append('Set-Cookie',CREATOR_COOKIE+'='+token+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000');
   response.headers.set('Cache-Control','private, no-store');
   return response;

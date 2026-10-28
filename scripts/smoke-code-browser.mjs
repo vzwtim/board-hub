@@ -1,0 +1,30 @@
+import {createRequire} from 'node:module';
+import {spawn,execFileSync} from 'node:child_process';
+import {mkdtemp,readFile,writeFile,rm,mkdir} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {resolve,join,dirname} from 'node:path';
+import {pathToFileURL} from 'node:url';
+const require=createRequire(import.meta.resolve('wrangler/package.json')),{build}=require('esbuild');
+const {chromium}=await import(pathToFileURL(join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright/index.mjs')).href);
+const temp=await mkdtemp(join(tmpdir(),'boardhub-browser-')),persist=join(temp,'state'),seedPath=resolve('outputs/code-browser-seed.mjs'),configPath=resolve('dist/server/wrangler.code-browser.json');let child,browser;
+try{
+ await mkdir(dirname(seedPath),{recursive:true});
+ await build({entryPoints:['scripts/fixtures/code-platform-seed.ts'],outfile:seedPath,bundle:true,platform:'node',format:'esm',external:['typescript','node:*'],plugins:[{name:'raw',setup(b){b.onResolve({filter:/\?raw$/},args=>({path:resolve(args.resolveDir,args.path.slice(0,-4)),namespace:'raw'}));b.onLoad({filter:/.*/,namespace:'raw'},async args=>({contents:'export default '+JSON.stringify(await readFile(args.path,'utf8')),loader:'js'}))}}]});
+ const {artifact}=await import(pathToFileURL(seedPath).href);
+ const config=JSON.parse(await readFile('dist/server/wrangler.json','utf8'));config.worker_loaders=[{binding:'CODE_LOADER'}];config.vars={...config.vars,BOARDHUB_CODE_ENABLED:'true'};await writeFile(configPath,JSON.stringify(config));
+ child=spawn(process.execPath,['node_modules/wrangler/bin/wrangler.js','dev','--config',configPath,'--local','--persist-to',persist,'--ip','127.0.0.1','--port','8805','--inspector-port','0'],{env:{...process.env,WRANGLER_SEND_METRICS:'false'},stdio:['ignore','pipe','pipe']});
+ await new Promise((resolve,reject)=>{let log='';const timer=setTimeout(()=>reject(Error('startup timeout '+log.slice(-1000))),45000);const collect=b=>{log+=b;if(log.includes('Ready on')){clearTimeout(timer);resolve()}};child.stdout.on('data',collect);child.stderr.on('data',collect);child.once('exit',code=>{clearTimeout(timer);reject(Error('Worker exit '+code+' '+log.slice(-1000)))})});
+ browser=await chromium.launch({executablePath:chromium.executablePath(),headless:true,args:['--no-sandbox']});const a=await browser.newContext(),b=await browser.newContext(),page=await a.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8805/studio/code');await page.getByRole('button',{name:'作品を作って接続・アップロードへ'}).click();await page.waitForURL('**/studio/code/*');const project=await page.evaluate(async()=>{const id=location.pathname.split('/').at(-1);return (await (await fetch('/api/code-projects/'+id)).json()).project});
+ await page.getByRole('heading',{name:'方法B：案内に沿ってアップロードする'}).waitFor();if(!await page.getByRole('button',{name:'GitHubへ保存して試遊版を作る'}).isDisabled())throw Error('Missing GitHub config must disable upload');
+ const release={...artifact,id:project.id+'-'+artifact.digest.slice(0,24),project:project.id,status:'ready',error:'',source:{kind:'upload',commit:'a'.repeat(40)},createdAt:Date.now()};
+ const quote=v=>"'"+String(v).replaceAll("'","''")+"'";const snapshot=JSON.stringify(release);let sql='INSERT INTO code_releases(id,project,created_at,snapshot) VALUES('+[quote(release.id),quote(release.project),release.createdAt,"''"].join(',')+');\n';for(let i=0;i<snapshot.length;i+=8000)sql+='UPDATE code_releases SET snapshot=snapshot||'+quote(snapshot.slice(i,i+8000))+' WHERE id='+quote(release.id)+';\n';const sqlPath=join(temp,'seed.sql');await writeFile(sqlPath,sql);
+ execFileSync(process.execPath,['node_modules/wrangler/bin/wrangler.js','d1','execute','DB','--config',configPath,'--local','--persist-to',persist,'--file',sqlPath],{env:{...process.env,WRANGLER_SEND_METRICS:'false'},stdio:'pipe'});
+ await page.goto('http://127.0.0.1:8805/code-games/'+project.id+'?ref='+release.id);const frame=page.frameLocator('iframe');await frame.getByRole('button',{name:'新しい試遊ルーム'}).click();await page.waitForURL('**&room=*');const invite=page.url();
+ const page2=await b.newPage();page2.on('pageerror',e=>errors.push(e.message));await page2.goto(invite);const frame2=page2.frameLocator('iframe');await frame2.getByRole('button',{name:'このルームに参加'}).click();await frame2.locator('#status').filter({hasText:'席 2'}).waitFor();
+ const status=await frame.locator('#status').innerText();const actor=status.includes('手番 1')?frame:frame2;await actor.getByRole('button',{name:'おすすめの合法手を実行'}).click();
+ await page.waitForTimeout(1800);const later=await frame.locator('#status').innerText();if(!later.includes('revision 3'))throw Error('Move did not reach shared room: '+later);
+ const tokenLeaks=await page2.locator('iframe').evaluate(e=>e.getAttribute('sandbox'));if(tokenLeaks!=='allow-scripts')throw Error('Unexpected iframe permissions');
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve('outputs/code-player-mobile.png'),fullPage:true});
+ if(errors.length)throw Error('Browser errors: '+errors.join('; '));console.log('PASS: real browser tutorial, disabled missing config, sandbox handshake, two seats and shared move.');
+}finally{if(browser)await browser.close();if(child)await new Promise(resolve=>{child.once('exit',resolve);child.kill();setTimeout(resolve,3000).unref()});await rm(temp,{recursive:true,force:true});await rm(seedPath,{force:true});await rm(configPath,{force:true})}

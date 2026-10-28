@@ -1,0 +1,3 @@
+import {CodePlayer} from '../../../components/code-platform/player';
+import {codeStore} from '../../../server/code-platform/store.ts';
+export default async function CodeGamePage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{ref?:string}>}){const {id}=await params,query=await searchParams,p=await codeStore.getProject(id),release=query.ref||p?.published;if(!p||!release)return <main className="workspace-loading"><h1>公開版が見つかりません</h1><a href="/studio/code">コード作品へ</a></main>;return <main className="catalog-main" style={{margin:'0 auto',maxWidth:1150}}><p><a href="/community">‹ ゲームを探す</a></p><CodePlayer id={id} release={release}/></main>}

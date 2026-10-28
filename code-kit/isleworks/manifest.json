@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "id": "isleworks-starter",
+  "title": "島の工房・コード制作キット",
+  "version": "0.1.0",
+  "sdkVersion": "0.1.0",
+  "entry": "game.ts",
+  "ui": "ui.html",
+  "license": "MIT",
+  "source": "https://github.com/vzwtim/board-hub",
+  "forkOf": null
+}

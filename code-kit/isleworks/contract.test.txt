@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import game from './game.ts';
+import {startGame,projectGame} from './sdk/code-game.ts';
+import {applyAction,replay} from './engine/core.ts';
+
+test('standalone rules start 2–4 seats, simulate and replay with no platform imports',()=>{
+ for(const count of [2,3,4]){
+  let state=startGame(game,count);
+  for(let i=0;i<120&&state.phase==='playing';i++){
+   const action=game.suggest!(state.board,state.currentPlayer);
+   assert.equal(game.definition.validate(state.board,state.currentPlayer,action),null);
+   state=applyAction(game.definition,state,{id:'test-'+i,expectedRevision:state.revision,playerID:state.currentPlayer,payload:action});
+  }
+  assert.deepEqual(replay(game.definition,state,state.events.length).board,state.board);
+  assert.deepEqual(projectGame(game,state,'0').events,[]);
+ }
+});
+test('client cannot configure board or select dice',()=>{
+ assert.throws(()=>game.parseAction({type:'configure',seed:99,players:4}));
+ assert.deepEqual(game.parseAction({type:'roll',dice:[6,6]}),{type:'roll',dice:[1,1]});
+});

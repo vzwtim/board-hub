@@ -13,7 +13,22 @@ TypeScript の純粋なゲームエンジンと、React / Vinext / Cloudflare Wo
 - [初期作者向け広報文案・観察シート](docs/creator-outreach.md)
 - [作者向け制作ガイド](https://board-hub.babachan.workers.dev/studio/guide)
 
-現在のブラウザ制作は連結ゲームが対象です。レビューのサーバー保存と版への関連付けは次の優先課題です。
+ブラウザ内の設定制作は連結ゲームが対象です。本命はルールとUIをコードで派生開発できる基盤で、[コード対応の設計と実装順](docs/code-platform.md)に記録しています。レビュー保存も引き続き実装対象です。
+
+## コードで派生ゲームをつくる（ローカル実証版）
+
+`/studio/code` から島の工房のコード制作キットをZIPでダウンロードできます。本体のアカウントやDBを含まず、ルール・開発用UI・CPU・テスト・共通SDK・ローカルホストだけを切り出します。
+
+```sh
+pnpm kit:export ./outputs/my-isleworks
+cd outputs/my-isleworks
+npm test
+npm start
+```
+
+Node 24以降、追加依存のインストール不要。別ブラウザで同じローカルURLを開くと別席で試遊できます。`AI_REQUEST.md` を外部AIに渡し、ゲーム側だけを変更できます。フォルダだけをゲーム用GitHubリポジトリに保存すれば、そのゲーム単位でフォークできます。
+
+現段階ではローカル実行のみです。アップロードコードの隔離実行、GitHub接続からの自動配信、BoardHub本番への公開は未実装です。
 
 ## 遊べるゲーム
 

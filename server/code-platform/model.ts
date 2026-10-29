@@ -3,7 +3,7 @@ import {RuleError} from '../../engine/types.ts';
 export type SourceFiles=Record<string,string>;
 export interface Repository {fullName:string;branch:string;directory:string;installation:number;managed:boolean}
 export interface CodeProject {id:string;owner:string;author:string;title:string;revision:number;challenge:string;repository:Repository|null;published:string|null;listed:boolean;createdAt:number;updatedAt:number}
-export interface CodeRelease {id:string;project:string;digest:string;status:'ready'|'failed';error:string;title:string;files:SourceFiles;modules:Record<string,{js:string}|{json:unknown}>;ui:string;source:{kind:'upload'|'github';commit:string|null};createdAt:number}
+export interface CodeRelease {id:string;project:string;digest:string;status:'ready'|'failed';error:string;title:string;files:SourceFiles;modules:Record<string,{js:string}|{json:unknown}>;ui:string;source:{kind:'upload'|'github'|'draft';commit:string|null};createdAt:number}
 export interface CodeStore {
  getProject(id:string):Promise<CodeProject|null>;
  createProject(p:CodeProject):Promise<void>;

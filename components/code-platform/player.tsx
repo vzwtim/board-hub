@@ -3,7 +3,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {codeFrameDocument} from '../../lib/code-frame.ts';
 import {projectRequest} from '../../lib/projects';
 interface ReleaseView {project:{id:string;title:string;author:string};release:string;digest:string;ui:string;metadata:{id:string;version:string;minPlayers:number;maxPlayers:number}}
-export function CodePlayer({id,release}:{id:string;release:string}){
+export function CodePlayer({id,release,embedded=false}:{id:string;release:string;embedded?:boolean}){
  const [data,setData]=useState<ReleaseView|null>(null),[error,setError]=useState(''),[room,setRoom]=useState('');const iframe=useRef<HTMLIFrameElement>(null);const nonce=useMemo(()=>globalThis.crypto?.randomUUID?.()||'loading',[]);
  useEffect(()=>{setRoom(new URLSearchParams(location.search).get('room')||'');projectRequest<ReleaseView>('/api/code-projects/'+id+'/releases/'+release).then(setData).catch(e=>setError(e.message))},[id,release]);
  useEffect(()=>{if(!data)return;const channels:MessagePort[]=[];
@@ -32,5 +32,5 @@ export function CodePlayer({id,release}:{id:string;release:string}){
  const srcDoc=useMemo(()=>{if(!data)return '';const initialRoom=typeof location==='undefined'?'':new URLSearchParams(location.search).get('room')||'';
  return codeFrameDocument(data.ui,nonce,initialRoom);
  },[data,nonce]);
- return <section><div className="panel"><h2>{data?.project.title||'コード作品の試遊'}</h2><p className="small muted">{data?'作者 '+data.project.author+' · 固定版 '+data.digest.slice(0,12):'読み込み中…'}</p><button disabled={!room} onClick={async()=>{try{await navigator.clipboard.writeText(location.href);setError('招待URLをコピーしました')}catch{setError('ブラウザのURL欄からコピーしてください')}}}>この対戦の招待URLをコピー</button><p className="fine">ゲームのコードは、本体のログイン情報を持たない隔離環境で動きます。</p></div>{error&&<p role="status">{error}</p>}{data&&<iframe ref={iframe} title={data.project.title+' の試遊'} sandbox="allow-scripts" srcDoc={srcDoc} style={{width:'100%',height:1250,border:'1px solid #dce4ec',borderRadius:16}}/>}</section>;
+ return <section><div className="panel"><h2>{data?.project.title||'コード作品の試遊'}</h2><p className="small muted">{data?'作者 '+data.project.author+' · 固定版 '+data.digest.slice(0,12):'読み込み中…'}</p><button disabled={!room} onClick={async()=>{try{const url=new URL('/code-games/'+id,location.origin);url.searchParams.set('ref',release);url.searchParams.set('room',room);await navigator.clipboard.writeText(url.href);setError('招待URLをコピーしました')}catch{setError('ブラウザのURL欄からコピーしてください')}}}>この対戦の招待URLをコピー</button><p className="fine">ゲームのコードは、本体のログイン情報を持たない隔離環境で動きます。</p></div>{error&&<p role="status">{error}</p>}{data&&<iframe ref={iframe} title={data.project.title+' の試遊'} sandbox="allow-scripts" srcDoc={srcDoc} style={{width:'100%',height:embedded?'78vh':1250,minHeight:embedded?560:undefined,border:'1px solid #dce4ec',borderRadius:16}}/>}</section>;
 }

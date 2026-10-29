@@ -5,7 +5,7 @@ import {projectRequest} from '../../lib/projects';
 import type {CodeProject,CodeRelease} from '../../server/code-platform/model.ts';
 interface Capabilities{github:boolean;upload:boolean;runtime:boolean;automatic:boolean;installURL:string|null}
 interface WorkspaceData{project:CodeProject;releases:Omit<CodeRelease,'files'|'modules'|'ui'>[];capabilities:Capabilities}
-export function CodeWorkspace({id}:{id:string}){
+export function AdvancedCodeWorkspace({id}:{id:string}){
  const [data,setData]=useState<WorkspaceData|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[files,setFiles]=useState<Record<string,string>|null>(null),[repo,setRepo]=useState(''),[branch,setBranch]=useState('main'),[directory,setDirectory]=useState('');
  async function load(){try{const v=await projectRequest<WorkspaceData>('/api/code-projects/'+id);setData(v);if(v.project.repository){setRepo(v.project.repository.fullName);setBranch(v.project.repository.branch);setDirectory(v.project.repository.directory)}}catch(e){setError((e as Error).message)}}
  useEffect(()=>{void load()},[id]);

@@ -13,13 +13,15 @@
 5. 以後のpushはWebhook経由で試遊版へ反映。「GitHubの更新を取り込む」で手動更新も可能。
 6. 固定版の試遊URLを共有し、確認後に作者が公開版を選ぶ。
 
-### GitHubを操作しない人
+### アプリ内で制作する人（標準）
 
-1. 同じ画面で作品を作成し、キットをダウンロードしてZIPを展開する。
-2. `AI_REQUEST.md` に希望を書き、フォルダを外部AIへ渡す。
-3. 戻ったファイルを反映し、作品画面のフォルダ選択からアップロードする。GitHub操作やNodeのインストールはこの経路では不要。
-4. アプリが管理用GitHubリポジトリの `projects/<作品ID>/` にコミットし、同じ検証・試遊へ進める。
-5. 確認後に公開版を選ぶ。アップロードやpushだけでは公開中の版は変わらない。
+1. `/studio/code` で作品名を入力。ゲームのルール・UIを下書きへ自動作成。
+2. 変更依頼とゲームコードを同じ画面で編集・自動保存。下書き保存はGitHub接続不要。
+3. 制作AI接続済みなら「変更を依頼する」でコードの変更案を適用。未設定なら設定待ち表示。既存の `OPENAI_API_KEY` と任意の `OPENAI_MODEL` を利用する。無料AIを自動契約する処理はない。
+4. 「試してみる」で固定版を作る。GitHub設定済みなら同期、失敗時は警告付きでD1保存の版を使う。`CODE_LOADER` と実行有効化は必要。
+5. 同じ画面で試遊し、作者が明示的に公開する。
+
+詳細設定からキットのダウンロード・フォルダアップロードも利用可能。アプリ内制作の設計と制限は [docs/in-app-creator.md](docs/in-app-creator.md)。
 
 初版はZIPそのものではなく**展開したフォルダ**を選択します。自己完結したHTMLのUIとローカルのTS/JSモジュールに対応し、npm依存の追加、TSX、外部スクリプト・画像配信には未対応。画像等はdata URLやインラインSVGを使用します。ゲームルールと操作は独自コードで追加できます。
 
@@ -74,7 +76,7 @@ Dynamic Workersに対応したCloudflare環境で、`wrangler.json` にWorker Lo
 
 ### 5. DB
 
-追記型 `drizzle/0003_code_platform.sql` を適用します。通常のデプロイスクリプトで既存マイグレーションに続けて適用。API起動時の追加テーブル初期化にも対応しています。既存ゲームのテーブルを変更・削除しません。
+追記型 `drizzle/0003_code_platform.sql` と `drizzle/0004_code_drafts.sql` を適用します。通常のデプロイスクリプトで既存マイグレーションに続けて適用。API起動時の追加テーブル初期化にも対応しています。既存ゲームのテーブルを変更・削除しません。
 
 ## 確認
 
@@ -102,3 +104,11 @@ node scripts/smoke-code-browser.mjs
 最後のブラウザ検証はPlaywrightとChromiumがある開発環境向けです。GitHub APIの実通信と本番設定は未確認で、GitHub APIは署名/権限/接続ファイルのモックテスト、隔離実行とHTTP APIはローカル実ランタイムで確認します。ブラウザ表示の検証は、この環境でChromiumを取得できず未完です。
 
 参照: https://developers.cloudflare.com/dynamic-workers/getting-started/ / https://developers.cloudflare.com/dynamic-workers/api-reference/
+
+## 2026-10-29 時点の接続作業
+
+- GitHub App 作成済み: `BoardHub Games by babachan`、App ID `5519434`、https://github.com/apps/boardhub-games-by-babachan 。Contents read/write とPushイベントのみ（必須Metadata含む）。
+- 非公開の保存先を作成済み: `vzwtim/boardhub-game-sources`、ブランチ `main`。
+- Appの秘密鍵発行操作がブラウザのURLポリシーに拒否されたため、迂回せず停止。鍵発行・選択リポジトリへのインストール・Cloudflare Secretsへの設定は未完。
+- Cloudflare管理画面は再ログインが必要。制作AIのAPI接続と本番CPU制限の検証も未完。実行有効化を行っていない。
+- 秘密鍵やWebhook secretの実値を、この文書・Git・チャットに書かない。

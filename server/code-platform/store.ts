@@ -20,3 +20,10 @@ export const codeRoomStore:CodeRoomStore={
  async create(r){await db().prepare('INSERT INTO code_rooms(id,project,release,revision,snapshot) VALUES(?,?,?,?,?)').bind(r.id,r.project,r.release,r.revision,JSON.stringify(r)).run()},
  async replace(r,revision){const result=await db().prepare('UPDATE code_rooms SET revision=?,snapshot=? WHERE id=? AND revision=?').bind(r.revision,JSON.stringify(r),r.id,revision).run();return result.meta.changes===1},
 };
+
+import type {DraftStore,CodeDraft} from './drafts.ts';
+export const draftStore:DraftStore={
+ async get(id){const row=await db().prepare('SELECT snapshot FROM code_drafts WHERE project=?').bind(id).first<{snapshot:string}>();return row?JSON.parse(row.snapshot):null},
+ async create(d){await db().prepare('INSERT INTO code_drafts(project,revision,snapshot) VALUES(?,?,?) ON CONFLICT(project) DO NOTHING').bind(d.project,d.revision,JSON.stringify(d)).run()},
+ async replace(d,revision){const r=await db().prepare('UPDATE code_drafts SET revision=?,snapshot=? WHERE project=? AND revision=?').bind(d.revision,JSON.stringify(d),d.project,revision).run();return r.meta.changes===1},
+};

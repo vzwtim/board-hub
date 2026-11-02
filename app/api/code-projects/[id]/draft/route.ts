@@ -1,3 +1,5 @@
+import {compileLocalPreview} from '../../../../../server/code-platform/local-preview.ts';
+import {resolveAIConnection,type AIEnvironment} from '../../../../../server/code-platform/ai-providers.ts';
 import {compileCode} from '../../../../../server/code-platform/compiler.ts';
 import {env} from 'cloudflare:workers';
 import {codeStore,draftStore} from '../../../../../server/code-platform/store.ts';
@@ -15,11 +17,14 @@ export async function POST(r:Request,{params}:{params:Promise<{id:string}>}){try
  const u=await requireIdentity(r),{id}=await params,c=await codeBody(r),draft=await ensureDraft(codeStore,draftStore,id,u.id);
  if(c.expectedRevision!==draft.revision)throw new RuleError('STALE_STATE','作品が更新されました。再読み込みして確認してください');
  if(c.type==='save')return response({draft:await saveDraft(codeStore,draftStore,id,u.id,c)});
+ if(c.type==='local-preview')return response({preview:compileLocalPreview(draft.files)});
  if(c.type==='generate'){
-  const config=env as unknown as {OPENAI_API_KEY?:string;OPENAI_MODEL?:string};if(!config.OPENAI_API_KEY)throw new RuleError('SETUP','制作アシスタントは接続準備中です。コードの編集と保存は利用できます');
-  const day=new Date().toISOString().slice(0,10);const used=await env.DB!.prepare('INSERT INTO code_ai_usage(owner,day,count) VALUES(?,?,1) ON CONFLICT(owner,day) DO UPDATE SET count=count+1 WHERE count<5 RETURNING count').bind(u.id,day).first();if(!used)throw new RuleError('LIMIT','本日の制作アシスタント利用は5回までです。編集・保存・試遊は引き続き利用できます');
-  const globalUsed=await env.DB!.prepare('INSERT INTO code_ai_usage(owner,day,count) VALUES(?,?,1) ON CONFLICT(owner,day) DO UPDATE SET count=count+1 WHERE count<20 RETURNING count').bind('__platform__',day).first();if(!globalUsed)throw new RuleError('LIMIT','本日の制作アシスタントの受付上限に達しました。編集内容は保存できます');
-  const result=await generateCodeEdits(draft.files,c.instruction,{key:config.OPENAI_API_KEY,model:config.OPENAI_MODEL});compileCode(result.files);const next=await saveDraft(codeStore,draftStore,id,u.id,{files:result.files,expectedRevision:draft.revision,summary:result.summary});return response({draft:next,changed:result.changed});
+  const config=env as unknown as AIEnvironment,connection=resolveAIConnection(c.ai,config),day=new Date().toISOString().slice(0,10);
+  const configured=Number(config.BOARDHUB_AI_DAILY_LIMIT),limit=connection.ownKey?100:Number.isInteger(configured)&&configured>0?Math.min(configured,200):20;
+  const used=await env.DB!.prepare('INSERT INTO code_ai_usage(owner,day,count) VALUES(?,?,1) ON CONFLICT(owner,day) DO UPDATE SET count=count+1 WHERE count<? RETURNING count').bind(u.id+(connection.ownKey?':own':':shared'),day,limit).first();if(!used)throw new RuleError('LIMIT','本日のAI利用上限に達しました。試遊・編集・保存は引き続き利用できます');
+  if(!connection.ownKey){const globalUsed=await env.DB!.prepare('INSERT INTO code_ai_usage(owner,day,count) VALUES(?,?,1) ON CONFLICT(owner,day) DO UPDATE SET count=count+1 WHERE count<200 RETURNING count').bind('__platform__',day).first();if(!globalUsed)throw new RuleError('LIMIT','本日の無料共通枠の上限に達しました。自分のキーに切り替えるか、時間を置いてお試しください')}
+  const result=await generateCodeEdits(draft.files,c.instruction,{connection,history:draft.messages,playtest:c.playtest});if(result.changed.length)compileCode(result.files);
+  const next=await saveDraft(codeStore,draftStore,id,u.id,{files:result.files,expectedRevision:draft.revision,summary:result.summary,request:'',messages:[...(draft.messages||[]),{role:'user',content:c.instruction},{role:'assistant',content:result.summary,model:connection.model}]});return response({draft:next,changed:result.changed});
  }
  if(c.type==='preview'){
   if(!runtimeLoader())throw new RuleError('SETUP','オンライン試遊は運営側で接続準備中です。作品の編集は保存されています');

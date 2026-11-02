@@ -1,3 +1,4 @@
+import {compileLocalPreview} from '../../server/code-platform/local-preview.ts';
 import {isleworksFiles} from '../../code-kit/bundle.ts';
 import {createCodeProject,publishRelease,type CodeStore,type CodeProject,type CodeRelease} from '../../server/code-platform/model.ts';
 import {sourceOperation,processPush} from '../../server/code-platform/sources.ts';
@@ -10,7 +11,7 @@ export default {async fetch(request:Request,env:{CODE_LOADER:WorkerLoader}){try{
  const clone=<T>(x:T):T=>structuredClone(x);
  const store:CodeStore={async getProject(id){return clone(projects.get(id)||null)},async createProject(p){projects.set(p.id,clone(p))},async replaceProject(p,revision){if(projects.get(p.id)?.revision!==revision)return false;projects.set(p.id,clone(p));return true},async listProjects(owner){return [...projects.values()].filter(p=>owner?p.owner===owner:p.listed).map(clone)},async getRelease(project,id){const r=releases.get(id);return r&&r.project===project?clone(r):null},async saveRelease(r){if(releases.get(r.id)?.status!=='ready')releases.set(r.id,clone(r))},async listReleases(project){return [...releases.values()].filter(r=>r.project===project).map(r=>{const {files,ui,modules,...v}=r;return clone(v)})},async claimDelivery(id){if(delivery.has(id))return false;delivery.add(id);return true},async forgetDelivery(id){delivery.delete(id)},async repositoryProjects(name){return [...projects.values()].filter(p=>p.repository?.fullName===name).map(clone)}};
  const rooms:CodeRoomStore={async get(id){return clone(roomMap.get(id)||null)},async create(r){roomMap.set(r.id,clone(r))},async replace(r,revision){if(roomMap.get(r.id)?.revision!==revision)return false;roomMap.set(r.id,clone(r));return true}};
- const files=isleworksFiles();delete files['runtime/server.mjs'];
+ const files=isleworksFiles();delete files['runtime/server.mjs'];const local=compileLocalPreview(files);assert(Object.keys(local.modules).length>3&&!!local.modules['game.ts'],'local preview compiler failed in Worker');
  let pushed=0,remote=files,commit='a'.repeat(40);
  class FakeGitHub extends CodeGitHub {constructor(){super({})}async managed(p:CodeProject){return {fullName:'test/game-storage',branch:'main',directory:'projects/'+p.id,installation:1,managed:true}}async upload(repository:any,next:any){pushed++;remote=clone(next);return commit}async read(){return {files:clone(remote),commit,tree:'b'.repeat(40)}}}
  const github=new FakeGitHub(),owner={id:'owner',name:'Author'},p=await createCodeProject(store,owner,'コード作品');
@@ -36,5 +37,5 @@ export default {async fetch(request:Request,env:{CODE_LOADER:WorkerLoader}){try{
  let externalRejected=false;try{compileCode({...files,'game.ts':"import fs from 'node:fs'; export default fs;"})}catch{externalRejected=true}assert(externalRejected,'external module accepted');
  const isolated=await sandboxCall(env.CODE_LOADER,{digest:'isolation-check',modules:{'__boardhub_host.js':{js:'export default {async fetch(r,env){let blocked=false;try{await fetch("https://example.com")}catch{blocked=true}return Response.json({blocked,bindings:Object.keys(env)})}}'}}},{type:'metadata'});assert(isolated.blocked&&isolated.bindings.length===0,'network or bindings exposed');
 
- return Response.json({ok:true,checks:['GitHub upload commit','real isolated TypeScript execution','publish','two authenticated seats','idempotence','hidden projection','push creates preview','old release pinned','new code used','external imports rejected','network and bindings blocked']});
+ return Response.json({ok:true,checks:['local browser preview compiled in Worker','GitHub upload commit','real isolated TypeScript execution','publish','two authenticated seats','idempotence','hidden projection','push creates preview','old release pinned','new code used','external imports rejected','network and bindings blocked']});
 }catch(e){return Response.json({error:(e as Error).stack},{status:500})}}};

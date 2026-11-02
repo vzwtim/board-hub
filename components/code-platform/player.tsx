@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
+import {prepareGuestTab} from '../../lib/guest-tab';
 import {codeFrameDocument} from '../../lib/code-frame.ts';
 import {projectRequest} from '../../lib/projects';
 interface ReleaseView {project:{id:string;title:string;author:string};release:string;digest:string;ui:string;metadata:{id:string;version:string;minPlayers:number;maxPlayers:number}}
@@ -19,7 +20,7 @@ export function CodePlayer({id,release,embedded=false}:{id:string;release:string
      let path:string;const match=c.path.match(/^\/api\/rooms\/([a-f0-9-]{36})$/);const creating=c.path==='/api/rooms'&&c.method==='POST';if(!creating&&!match)throw Error('この操作は許可されていません');
      if(c.body!==undefined&&JSON.stringify(c.body).length>32768)throw Error('操作が大きすぎます');
      path=creating?'/api/code-projects/'+id+'/rooms':'/api/code-rooms/'+match![1]+'?release='+encodeURIComponent(release);
-     const key='boardhub-code-seat:'+release+':'+(match?.[1]||'');const token=creating?'':sessionStorage.getItem(key)||'';
+     await prepareGuestTab();const key='boardhub-code-seat:'+release+':'+(match?.[1]||'');const token=creating?'':sessionStorage.getItem(key)||'';
      const response=await fetch(path,{method:c.method,headers:{...(c.method==='POST'?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:c.method==='POST'?JSON.stringify({...c.body,release}):undefined});
      status=response.status;value=await response.json();if(response.ok){if(value.release!==release||value.project!==id)throw Error('対戦の版が一致しません');if(value.token){sessionStorage.setItem('boardhub-code-seat:'+release+':'+value.id,value.token);delete value.token}if(value.id){setRoom(value.id);const url=new URL(location.href);url.searchParams.set('room',value.id);history.replaceState(null,'',url)}}
     }
@@ -32,5 +33,5 @@ export function CodePlayer({id,release,embedded=false}:{id:string;release:string
  const srcDoc=useMemo(()=>{if(!data)return '';const initialRoom=typeof location==='undefined'?'':new URLSearchParams(location.search).get('room')||'';
  return codeFrameDocument(data.ui,nonce,initialRoom);
  },[data,nonce]);
- return <section><div className="panel"><h2>{data?.project.title||'コード作品の試遊'}</h2><p className="small muted">{data?'作者 '+data.project.author+' · 固定版 '+data.digest.slice(0,12):'読み込み中…'}</p><button disabled={!room} onClick={async()=>{try{const url=new URL('/code-games/'+id,location.origin);url.searchParams.set('ref',release);url.searchParams.set('room',room);await navigator.clipboard.writeText(url.href);setError('招待URLをコピーしました')}catch{setError('ブラウザのURL欄からコピーしてください')}}}>この対戦の招待URLをコピー</button><p className="fine">ゲームのコードは、本体のログイン情報を持たない隔離環境で動きます。</p></div>{error&&<p role="status">{error}</p>}{data&&<iframe ref={iframe} title={data.project.title+' の試遊'} sandbox="allow-scripts" srcDoc={srcDoc} style={{width:'100%',height:embedded?'78vh':1250,minHeight:embedded?560:undefined,border:'1px solid #dce4ec',borderRadius:16}}/>}</section>;
+ return <section><div className="panel"><span className="eyebrow muted">コード作品の試遊版</span><h2>{data?.project.title||'コード作品の試遊'}</h2><p className="small muted">{data?'作者 '+data.project.author+' · 固定版 '+data.digest.slice(0,12):'読み込み中…'}</p><button disabled={!room} onClick={async()=>{try{const url=new URL('/code-games/'+id,location.origin);url.searchParams.set('ref',release);url.searchParams.set('room',room);await navigator.clipboard.writeText(url.href);setError('招待URLをコピーしました')}catch{setError('ブラウザのURL欄からコピーしてください')}}}>この対戦の招待URLをコピー</button><p className="fine">ゲームのコードは、本体のログイン情報を持たない隔離環境で動きます。</p></div>{error&&<p role="status">{error}</p>}{data&&<iframe ref={iframe} title={data.project.title+' の試遊'} sandbox="allow-scripts" srcDoc={srcDoc} style={{width:'100%',height:embedded?'78vh':1250,minHeight:embedded?560:undefined,border:'1px solid #dce4ec',borderRadius:16}}/>}</section>;
 }

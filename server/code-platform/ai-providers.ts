@@ -33,7 +33,7 @@ export function providerAvailability(env:AIEnvironment){return Object.entries(AI
 export async function chatCompletion(connection:AIConnection,messages:{role:string;content:string}[],request:typeof fetch=fetch){
  const body={model:connection.model,messages,response_format:{type:'json_object'},...(['openai','groq'].includes(connection.provider)?{max_completion_tokens:8000}:{max_tokens:8000}),...(connection.freeOnly?{provider:{max_price:{prompt:0,completion:0},allow_fallbacks:false}}:{})};
  let r:Response;
- try{r=await request(connection.endpoint,{method:'POST',cache:'no-store',redirect:'error',headers:{Authorization:'Bearer '+connection.key,'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify(body)})}
+ try{r=await request(connection.endpoint,{method:'POST',cache:'no-store',redirect:'manual',headers:{Authorization:'Bearer '+connection.key,'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify(body)})}
  catch(e){
   const timeout=e instanceof Error&&['TimeoutError','AbortError'].includes(e.name);
   // Exception text can contain request headers; log only a fixed category.

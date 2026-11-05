@@ -32,7 +32,16 @@ export async function freeAIModels(request:typeof fetch=fetch):Promise<AIModel[]
 export function providerAvailability(env:AIEnvironment){return Object.entries(AI_PROVIDERS).map(([id,p])=>({id,name:p.name,keyURL:p.keyURL,defaultModel:p.defaultModel,shared:id==='openrouter'&&!!env.OPENROUTER_API_KEY}))}
 export async function chatCompletion(connection:AIConnection,messages:{role:string;content:string}[],request:typeof fetch=fetch){
  const body={model:connection.model,messages,response_format:{type:'json_object'},...(['openai','groq'].includes(connection.provider)?{max_completion_tokens:8000}:{max_tokens:8000}),...(connection.freeOnly?{provider:{max_price:{prompt:0,completion:0},allow_fallbacks:false}}:{})};
- const r=await request(connection.endpoint,{method:'POST',redirect:'error',headers:{Authorization:'Bearer '+connection.key,'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify(body)});
- if(!r.ok)throw new RuleError('AI_UPSTREAM',r.status===429?'AIの利用上限に達しました。時間を置くか、別のモデル・接続先を選んでください':r.status===401||r.status===403?'APIキー・モデルの利用権限を確認してください':'AIに接続できませんでした。別のモデルを選べます。下書きと試遊は保持しています');
+ let r:Response;
+ try{r=await request(connection.endpoint,{method:'POST',cache:'no-store',redirect:'error',headers:{Authorization:'Bearer '+connection.key,'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify(body)})}
+ catch(e){
+  const timeout=e instanceof Error&&['TimeoutError','AbortError'].includes(e.name);
+  // Exception text can contain request headers; log only a fixed category.
+  const detail=e instanceof Error?e.message.split(connection.key).join('[redacted]').replace(/Bearer\s+\S+/gi,'Bearer [redacted]').slice(0,300):'Unknown transport error';
+  console.error('BoardHub AI transport failed',{provider:connection.provider,model:connection.model,category:timeout?'timeout':'network',detail});
+  throw new RuleError(timeout?'AI_TIMEOUT':'AI_NETWORK',timeout?'AIの応答が時間内に届きませんでした。別のモデルを選ぶか、時間を置いて再試行してください':'AIへの通信に失敗しました。時間を置くか、別の接続先を選んでください');
+ }
+ if(!r.ok){console.error('BoardHub AI upstream rejected',{provider:connection.provider,model:connection.model,status:r.status});throw new RuleError('AI_UPSTREAM',r.status===429?'AIの利用上限に達しました。時間を置くか、別のモデル・接続先を選んでください':r.status===401||r.status===403?'APIキー・モデルの利用権限を確認してください':'AIに接続できませんでした。別のモデルを選べます。下書きと試遊は保持しています')}
+
  const value=await r.json() as {choices?:{message?:{content?:string}}[]};const content=value.choices?.[0]?.message?.content;if(typeof content!=='string'||content.length>250000)throw new RuleError('AI_INVALID','AIの応答を読み取れませんでした');return content.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
 }

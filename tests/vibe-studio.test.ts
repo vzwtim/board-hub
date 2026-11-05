@@ -29,3 +29,13 @@ test('local preview has no parent credentials, blocks egress and preserves autho
  const doc=localPlaytestDocument({digest:'d',title:'Game',modules:{'game.ts':'module.exports={};'},ui},'nonce');assert.ok(doc.includes('<header>My header</header>'));assert.ok(doc.includes("connect-src 'none'"));assert.ok(doc.includes("frame-src 'none'"));assert.ok(doc.includes('worker.terminate()'));assert.ok(doc.includes('4000'));assert.ok(!doc.includes('allow-same-origin'));assert.ok(codeFrameDocument(ui,'nonce','').includes('<header>My header</header>'));
  const escaped=localPlaytestDocument({digest:'d',title:'</script><script>bad()',modules:{'game.ts':'</script>'},ui:'<p>Game</p>'},'nonce');assert.ok(!escaped.includes('<script>bad()'));
 });
+
+test('transport failures become safe errors and bypass framework fetch caching',async()=>{
+ const c=resolveAIConnection({source:'shared'},{OPENROUTER_API_KEY:'secret'});
+ const logs:unknown[][]=[];const original=console.error;console.error=(...args)=>{logs.push(args)};
+ try{
+  await assert.rejects(()=>chatCompletion(c,[],async(_input,init)=>{assert.equal(init?.cache,'no-store');throw new Error('Authorization: Bearer secret')}),(e:any)=>e.code==='AI_NETWORK'&&!e.message.includes('secret'));
+  await assert.rejects(()=>chatCompletion(c,[],async()=>{throw new DOMException('secret','TimeoutError')}),(e:any)=>e.code==='AI_TIMEOUT');
+  assert.ok(!JSON.stringify(logs).includes('secret'));assert.ok(JSON.stringify(logs).includes('timeout'));
+ }finally{console.error=original}
+});

@@ -6,7 +6,7 @@ import {localPlaytestDocument} from '../lib/local-playtest.ts';
 import {codeFrameDocument} from '../lib/code-frame.ts';
 test('shared AI only accepts free OpenRouter choices and never silently chooses a paid fallback',async()=>{
  const c=resolveAIConnection({provider:'openrouter',model:'openrouter/free',source:'shared'},{OPENROUTER_API_KEY:'shared-secret'});
- assert.equal(c.freeOnly,true);await chatCompletion(c,[{role:'user',content:'JSON'}],async(input,init)=>{assert.equal(String(input),'https://openrouter.ai/api/v1/chat/completions');assert.equal(new Headers(init?.headers).get('authorization'),'Bearer shared-secret');const body=JSON.parse(String(init?.body));assert.deepEqual(body.provider,{max_price:{prompt:0,completion:0},allow_fallbacks:false});assert.ok(!String(init?.body).includes('shared-secret'));assert.equal(init?.redirect,'error');return Response.json({choices:[{message:{content:'{}'}}]})});
+ assert.equal(c.freeOnly,true);await chatCompletion(c,[{role:'user',content:'JSON'}],async(input,init)=>{assert.equal(String(input),'https://openrouter.ai/api/v1/chat/completions');assert.equal(new Headers(init?.headers).get('authorization'),'Bearer shared-secret');const body=JSON.parse(String(init?.body));assert.deepEqual(body.provider,{max_price:{prompt:0,completion:0},allow_fallbacks:false});assert.ok(!String(init?.body).includes('shared-secret'));assert.equal(init?.redirect,'manual');return Response.json({choices:[{message:{content:'{}'}}]})});
  assert.throws(()=>resolveAIConnection({provider:'openrouter',model:'paid/model'},{OPENROUTER_API_KEY:'secret'}),/無料モデル/);assert.throws(()=>resolveAIConnection({provider:'openai',model:'gpt-4.1-mini'},{OPENAI_API_KEY:'secret'}),/無料モデル/);assert.throws(()=>resolveAIConnection({provider:'http://internal',source:'own',key:'secret'},{}),/サービス/);assert.throws(()=>resolveAIConnection({source:'shared'},{}),/未接続/);
 });
 test('own credentials only go to fixed provider endpoints, never public capability responses',()=>{
@@ -38,4 +38,10 @@ test('transport failures become safe errors and bypass framework fetch caching',
   await assert.rejects(()=>chatCompletion(c,[],async()=>{throw new DOMException('secret','TimeoutError')}),(e:any)=>e.code==='AI_TIMEOUT');
   assert.ok(!JSON.stringify(logs).includes('secret'));assert.ok(JSON.stringify(logs).includes('timeout'));
  }finally{console.error=original}
+});
+
+test('AI redirects are rejected without following or echoing response bodies',async()=>{
+ const c=resolveAIConnection({source:'shared'},{OPENROUTER_API_KEY:'secret'});let calls=0;
+ await assert.rejects(()=>chatCompletion(c,[],async(_input,init)=>{calls++;assert.equal(init?.redirect,'manual');return new Response('secret',{status:302,headers:{Location:'https://example.com/'}})}),(e:any)=>e.code==='AI_UPSTREAM'&&!e.message.includes('secret'));
+ assert.equal(calls,1);
 });

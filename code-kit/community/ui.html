@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>連結ゲーム</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;color:#24344a;background:#f3f6fa;font:15px/1.6 system-ui,sans-serif}
+main{max-width:600px;margin:auto;padding:20px}
+h1{margin:0;font-size:24px}
+p{margin:8px 0}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.toolbar button{padding:6px 12px;border:1px solid #cbd6e4;border-radius:8px;background:#fff;color:inherit}
+#board{display:grid;gap:4px;padding:8px;background:#d9e3ef;border-radius:12px}
+#board:empty{display:none}
+#board button{aspect-ratio:1;min-width:0;border:0;border-radius:8px;background:#fff;color:#24344a;padding:0}
+#board button[data-stone="0"]{background:var(--accent);color:white}
+#board button[data-stone="1"]{background:#c05636;color:white}
+#board button[data-stone="#"]{background:#9aa9bb}
+#board button[data-win]{outline:2px solid #111;outline-offset:-3px}
+#error{color:#8b3024}
+</style>
+</head>
+<body>
+<main>
+<h1 id="title">連結ゲーム</h1>
+<p id="description"></p>
+<div class="toolbar">
+<button id="create" disabled>新しい対局</button>
+<button id="join" hidden>対局に参加</button>
+<button id="suggest" disabled>CPUに一手任せる</button>
+</div>
+<p id="status" role="status"></p>
+<p id="error" role="alert"></p>
+<div id="board" aria-label="ゲーム盤面"></div>
+</main>
+<script type="module">
+const byId=id=>document.getElementById(id);
+let room=globalThis.boardhubRoom||'',current=null,busy=false;
+async function api(path,data) {
+  const response=await fetch(path,data?{method:'POST',body:JSON.stringify(data)}:undefined);
+  const value=await response.json();
+  if(!response.ok)throw Error(value.error||'対局に接続できません');
+  return value;
+}
+function render(value) {
+  current=value;
+  const {state,playerID}=value,{spec,cells,win}=state.board;
+  const active=state.phase==='playing'&&playerID===state.currentPlayer;
+  byId('title').textContent=spec.title;
+  byId('description').textContent=spec.description;
+  byId('status').textContent=state.phase==='finished'
+    ?state.winner==='draw'?'引き分け':`プレイヤー ${Number(state.winner)+1} の勝ち`
+    :`プレイヤー ${Number(state.currentPlayer)+1} の手番 · ${spec.connect}つで勝利`;
+  byId('suggest').disabled=!active;
+  byId('join').hidden=value.id==='local'||playerID!==null;
+  const board=byId('board');
+  board.style.gridTemplateColumns=`repeat(${spec.columns},minmax(0,1fr))`;
+  board.style.setProperty('--accent',spec.accent);
+  board.replaceChildren(...cells.map((stone,index)=>{
+    const cell=document.createElement('button');
+    const target=spec.gravity?index%spec.columns:index;
+    cell.textContent=stone==='0'?'●':stone==='1'?'○':stone==='#'?'■':'';
+    if(stone!==null)cell.dataset.stone=stone;
+    if(win.includes(index))cell.dataset.win='';
+    cell.disabled=!active||(spec.gravity?cells[target]!==null:stone!==null);
+    cell.setAttribute('aria-label',spec.gravity?`${target+1}列`:`${Math.floor(index/spec.columns)+1}行 ${index%spec.columns+1}列`);
+    cell.onclick=()=>act({type:'move',action:{type:'play',index:target},id:crypto.randomUUID(),expectedRevision:state.revision});
+    return cell;
+  }));
+}
+async function act(data) {
+  if(busy)return;
+  busy=true;
+  byId('error').textContent='';
+  try {
+    const value=await api(data.type==='create'?'/api/rooms':'/api/rooms/'+room,data);
+    room=value.id;
+    render(value);
+  } catch(error) {
+    byId('error').textContent=error.message;
+  } finally {
+    busy=false;
+  }
+}
+byId('create').onclick=()=>act({type:'create',players:2});
+byId('join').onclick=()=>act({type:'join'});
+byId('suggest').onclick=()=>act({type:'suggest',id:crypto.randomUUID(),expectedRevision:current.state.revision});
+async function poll() {
+  if(!room||room==='local'||busy)return;
+  try {
+    const value=await api('/api/rooms/'+room);
+    if(!busy&&(!current||value.state.revision>=current.state.revision))render(value);
+  } catch(error) {
+    byId('error').textContent=error.message;
+  }
+}
+try {
+  const release=await api('/api/release');
+  byId('title').textContent=release.title;
+  byId('create').disabled=false;
+  await poll();
+  setInterval(poll,1500);
+} catch(error) {
+  byId('error').textContent=error.message;
+}
+</script>
+</body>
+</html>

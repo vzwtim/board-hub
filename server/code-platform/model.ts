@@ -1,4 +1,5 @@
 import {createHash,randomBytes} from 'node:crypto';
+import type {CodeDraft} from './drafts.ts';
 import {RuleError} from '../../engine/types.ts';
 export type SourceFiles=Record<string,string>;
 export interface Repository {fullName:string;branch:string;directory:string;installation:number;managed:boolean}
@@ -6,7 +7,7 @@ export interface CodeProject {id:string;owner:string;author:string;title:string;
 export interface CodeRelease {id:string;project:string;digest:string;status:'ready'|'failed';error:string;title:string;files:SourceFiles;modules:Record<string,{js:string}|{json:unknown}>;ui:string;source:{kind:'upload'|'github'|'draft';commit:string|null};createdAt:number}
 export interface CodeStore {
  getProject(id:string):Promise<CodeProject|null>;
- createProject(p:CodeProject):Promise<void>;
+ createProject(p:CodeProject,draft?:Omit<CodeDraft,'project'>):Promise<void>;
  replaceProject(p:CodeProject,revision:number):Promise<boolean>;
  listProjects(owner:string|null):Promise<CodeProject[]>;
  getRelease(project:string,id:string):Promise<CodeRelease|null>;
@@ -19,7 +20,7 @@ export interface CodeStore {
 export const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
 export function own(p:CodeProject,owner:string){if(p.owner!==owner)throw new RuleError('UNAUTHORIZED','この作品の作者だけが変更できます')}
 export async function requireProject(store:CodeStore,id:string,owner?:string){const p=await store.getProject(id);if(!p)throw new RuleError('NOT_FOUND','作品が見つかりません');if(owner)own(p,owner);return p}
-export async function createCodeProject(store:CodeStore,u:{id:string;name:string},title:unknown){if(typeof title!=='string'||!title.trim()||title.length>60)throw new RuleError('INPUT','作品名を1〜60文字で入力してください');if((await store.listProjects(u.id)).length>=10)throw new RuleError('LIMIT','コード作品は10件までです');const p:CodeProject={id:crypto.randomUUID(),owner:u.id,author:u.name,title:title.trim(),revision:1,challenge:randomBytes(32).toString('hex'),repository:null,published:null,listed:false,createdAt:Date.now(),updatedAt:Date.now()};await store.createProject(p);return p}
+export async function createCodeProject(store:CodeStore,u:{id:string;name:string},title:unknown,draft?:Omit<CodeDraft,'project'>){if(typeof title!=='string'||!title.trim()||title.length>60)throw new RuleError('INPUT','作品名を1〜60文字で入力してください');if((await store.listProjects(u.id)).length>=10)throw new RuleError('LIMIT','コード作品は10件までです');const p:CodeProject={id:crypto.randomUUID(),owner:u.id,author:u.name,title:title.trim(),revision:1,challenge:randomBytes(32).toString('hex'),repository:null,published:null,listed:false,createdAt:Date.now(),updatedAt:Date.now()};await store.createProject(p,draft);return p}
 export function publicProject(p:CodeProject){return {id:p.id,title:p.title,author:p.author,published:p.published,listed:p.listed,updatedAt:p.updatedAt}}
 export async function saveProject(store:CodeStore,p:CodeProject,expected:number){p.revision=expected+1;p.updatedAt=Date.now();if(!await store.replaceProject(p,expected))throw new RuleError('STALE_STATE','作品が更新されています。再読み込みしてください');return p}
 export async function publishRelease(store:CodeStore,id:string,owner:string,input:{release?:unknown;expectedRevision?:unknown;listed?:unknown}){const p=await requireProject(store,id,owner);if(input.expectedRevision!==p.revision)throw new RuleError('STALE_STATE','作品が更新されています');if(typeof input.release!=='string'||typeof input.listed!=='boolean')throw new RuleError('INPUT','公開する版を選んでください');const r=await store.getRelease(id,input.release);if(!r||r.status!=='ready')throw new RuleError('STATE','試遊できる版だけを公開できます');p.published=r.id;p.listed=input.listed;return saveProject(store,p,p.revision)}

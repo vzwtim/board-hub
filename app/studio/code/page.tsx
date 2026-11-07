@@ -1,5 +1,5 @@
-import {CodeProjectList} from '../../../components/code-platform/project-list';
-import {AccountAvatar} from '../../../components/avatar';
-import {MobileBrand} from '../../../components/mobile-brand';
-import {SiteNav} from '../../../components/site-nav';
-export default function CodeStudio(){return <div className="catalog-shell"><SiteNav selected="/studio"/><main className="catalog-main engine-main"><header className="catalog-header"><div><MobileBrand/><span className="catalog-breadcrumb">CODE CREATOR</span><h1>あなたのアイデアを、遊べるゲームに。</h1></div><AccountAvatar/></header><section className="engine-intro"><span className="eyebrow">ISLEWORKS STARTER</span><h2>ルールも画面も、<br/>自分で変えられる。</h2><p>元のゲームを選んで、変えたいことを言葉にする。アプリの中で編集し、試して、あなたのゲームとして育てられます。</p><div><a className="button primary" href="#start">アプリで制作を始める</a></div></section><CodeProjectList/><section className="engine-direction"><h2>遊びながら、会話で変える。</h2><p>作品を作ると、元になるゲームを自動で用意します。変更したい内容を相談し、その場で試遊。納得した版を公開できます。編集内容はアプリが保存します。</p><p>制作画面は左がテストプレイ、右がAIチャット。端末内の試遊は追加の接続不要です。無料モデルを選ぶか、自分のAPIキーを接続して編集できます。GitHub接続・オンライン試遊・公開は詳細設定から利用します。</p></section><details className="panel"><summary>外部AIやGitHubで制作したい方へ</summary><p><a href="/api/code-kits/isleworks" download="isleworks-code-kit.zip">制作キットをダウンロード</a>して、自分の環境でも開発できます。作品画面の詳細設定からGitHub接続や取り込みを利用できます。</p></details><footer><a href="/studio">プロジェクトへ</a><a href="/studio/guide">設定からつくる</a></footer></main></div>}
+import {redirect} from 'next/navigation';
+
+export default function CodeStudio() {
+  redirect('/studio');
+}

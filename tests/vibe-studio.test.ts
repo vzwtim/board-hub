@@ -45,3 +45,15 @@ test('AI redirects are rejected without following or echoing response bodies',as
  await assert.rejects(()=>chatCompletion(c,[],async(_input,init)=>{calls++;assert.equal(init?.redirect,'manual');return new Response('secret',{status:302,headers:{Location:'https://example.com/'}})}),(e:any)=>e.code==='AI_UPSTREAM'&&!e.message.includes('secret'));
  assert.equal(calls,1);
 });
+
+test('consultation leaves files untouched even if the model returns edits, while edit mode requires a patch',async()=>{
+ const files={'game.ts':'export default {};','ui.html':'<h1>Game</h1>','manifest.json':JSON.stringify({schema:1,sdkVersion:'0.1.0',entry:'game.ts',ui:'ui.html',title:'Game'})};
+ const reply=(value:unknown)=>async()=>Response.json({choices:[{message:{content:JSON.stringify(value)}}]});
+ const patch={summary:'タイトルを更新しました',edits:[{path:'ui.html',oldText:'Game',newText:'New game'}]};
+ const discussion=await generateCodeEdits(files,'表示について相談したい',{key:'test',mode:'consult'},reply(patch));
+ assert.equal(discussion.files,files);
+ assert.deepEqual(discussion.changed,[]);
+ const edited=await generateCodeEdits(files,'タイトルを変更して',{key:'test',mode:'edit'},reply(patch));
+ assert.equal(edited.files['ui.html'],'<h1>New game</h1>');
+ await assert.rejects(generateCodeEdits(files,'タイトルを変更して',{key:'test',mode:'edit'},reply({summary:'変更を提案します',edits:[]})),/変更案が返りません/);
+});

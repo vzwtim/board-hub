@@ -3,3 +3,28 @@
 /* Reset legacy element rules inherited from the catalogue shell. */
 .creator .header{height:auto;min-height:56px;padding:0;position:static;background:transparent;backdrop-filter:none;border:0;z-index:auto}.creator .assistant{padding:0;backdrop-filter:none;z-index:1}.creator .context{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:6px;margin:0 0 8px}.creator .context input[type=checkbox],.creator .playFooter input[type=checkbox]{appearance:auto;width:14px;height:14px;min-height:0;padding:0;flex:0 0 14px;margin:0}.creator .composer textarea{font-family:inherit;font-size:12px;line-height:1.8}
 .creator .assistant{align-items:stretch;justify-content:flex-start}
+
+.chatModes {
+  display:flex;
+  gap:4px;
+  padding:3px;
+  margin-bottom:9px;
+  background:#edf2f8;
+  border-radius:9px;
+}
+.chatModes button {
+  flex:1;
+  justify-content:center;
+  background:transparent;
+  color:#536f8e;
+}
+.chatModes button[aria-pressed=true] {
+  background:#fff;
+  color:#075da7;
+  box-shadow:0 1px 4px #20344b18;
+}
+.undo .viewPlay { display:none; }
+@media(max-width:850px) {
+  .undo { flex-wrap:wrap; }
+  .undo .viewPlay { display:inline-flex; color:#075da7; }
+}

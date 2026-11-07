@@ -3,7 +3,21 @@ import type {CodeStore,CodeProject,CodeRelease} from './model.ts';
 const db=()=>env.DB!;
 export const codeStore:CodeStore={
  async getProject(id){const r=await db().prepare('SELECT snapshot FROM code_projects WHERE id=?').bind(id).first<{snapshot:string}>();return r?JSON.parse(r.snapshot):null},
- async createProject(p){await db().prepare('INSERT INTO code_projects(id,owner,repository,listed,revision,updated_at,snapshot) VALUES(?,?,?,?,?,?,?)').bind(p.id,p.owner,p.repository?.fullName.toLowerCase()||'',+p.listed,p.revision,p.updatedAt,JSON.stringify(p)).run()},
+ async createProject(project,draft) {
+  const database=db();
+  const statement=database.prepare('INSERT INTO code_projects(id,owner,repository,listed,revision,updated_at,snapshot) VALUES(?,?,?,?,?,?,?)')
+   .bind(project.id,project.owner,project.repository?.fullName.toLowerCase()||'',+project.listed,project.revision,project.updatedAt,JSON.stringify(project));
+  if(!draft) {
+   await statement.run();
+   return;
+  }
+  const initial={...draft,project:project.id};
+  await database.batch([
+   statement,
+   database.prepare('INSERT INTO code_drafts(project,revision,snapshot) VALUES(?,?,?)')
+    .bind(project.id,initial.revision,JSON.stringify(initial)),
+  ]);
+ },
  async replaceProject(p,revision){const r=await db().prepare('UPDATE code_projects SET owner=?,repository=?,listed=?,revision=?,updated_at=?,snapshot=? WHERE id=? AND revision=?').bind(p.owner,p.repository?.fullName.toLowerCase()||'',+p.listed,p.revision,p.updatedAt,JSON.stringify(p),p.id,revision).run();return r.meta.changes===1},
  async listProjects(owner){const r=await (owner?db().prepare('SELECT snapshot FROM code_projects WHERE owner=? ORDER BY updated_at DESC LIMIT 20').bind(owner):db().prepare('SELECT snapshot FROM code_projects WHERE listed=1 ORDER BY updated_at DESC LIMIT 100')).all<{snapshot:string}>();return r.results.map(r=>JSON.parse(r.snapshot))},
  async getRelease(project,id){const r=await db().prepare('SELECT snapshot FROM code_releases WHERE project=? AND id=?').bind(project,id).first<{snapshot:string}>();return r?JSON.parse(r.snapshot):null},

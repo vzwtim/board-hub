@@ -46,11 +46,12 @@ test('AI redirects are rejected without following or echoing response bodies',as
  assert.equal(calls,1);
 });
 
-test('consultation leaves files untouched even if the model returns edits, while edit mode requires a patch',async()=>{
+test('consultation rejects unexpected edits and edit mode requires a patch',async()=>{
  const files={'game.ts':'export default {};','ui.html':'<h1>Game</h1>','manifest.json':JSON.stringify({schema:1,sdkVersion:'0.1.0',entry:'game.ts',ui:'ui.html',title:'Game'})};
  const reply=(value:unknown)=>async()=>Response.json({choices:[{message:{content:JSON.stringify(value)}}]});
  const patch={summary:'タイトルを更新しました',edits:[{path:'ui.html',oldText:'Game',newText:'New game'}]};
- const discussion=await generateCodeEdits(files,'表示について相談したい',{key:'test',mode:'consult'},reply(patch));
+ await assert.rejects(generateCodeEdits(files,'表示について相談したい',{key:'test',mode:'consult'},reply(patch)),/相談への回答ではなく変更案/);
+ const discussion=await generateCodeEdits(files,'表示について相談したい',{key:'test',mode:'consult'},reply({summary:'見出しを目立たせると分かりやすくなります',edits:[]}));
  assert.equal(discussion.files,files);
  assert.deepEqual(discussion.changed,[]);
  const edited=await generateCodeEdits(files,'タイトルを変更して',{key:'test',mode:'edit'},reply(patch));

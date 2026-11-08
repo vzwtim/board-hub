@@ -28,3 +28,47 @@
   .undo { flex-wrap:wrap; }
   .undo .viewPlay { display:inline-flex; color:#075da7; }
 }
+
+/* Keep the conversation usable beside the game, including short laptop screens. */
+.creator .layout{grid-template-columns:minmax(0,1fr) minmax(400px,44%);align-items:start}
+.creator .layout[data-chat-wide=true]{grid-template-columns:minmax(300px,1fr) minmax(480px,58%)}
+.creator .assistant{height:calc(100dvh - 140px);min-height:540px;max-height:none;top:16px;position:sticky}
+.creator .preview{height:calc(100dvh - 240px);min-height:440px}
+.creator .messages{padding:18px;min-height:160px;overflow-wrap:anywhere}
+.creator .messages article p{font-size:14px;line-height:1.85}
+.creator .messages article small{font-size:11px}
+.creator .userMessage{margin-left:12px}
+.creator .aiMessage{margin-right:0}
+.creator .composer textarea{font-size:15px;line-height:1.7;min-height:110px;max-height:240px;resize:vertical}
+.creator .composer button{font-size:12px;min-height:38px}
+.creator .context{font-size:12px}
+.creator .undo span{font-size:11px;line-height:1.6}
+.creator .undo{align-items:flex-start;flex-wrap:wrap}
+.chatTools{display:flex;align-items:center;gap:6px}
+.creator .chatTools .expandChat{font-size:11px;padding:7px 9px;min-height:34px;white-space:nowrap}
+.creator .settings{max-height:220px}
+@media(max-width:1100px) and (min-width:851px){
+ .creator .layout{grid-template-columns:minmax(0,1fr) minmax(360px,48%)}
+ .creator .layout[data-chat-wide=true]{grid-template-columns:minmax(240px,1fr) minmax(400px,60%)}
+ .creator .playHeader{flex-wrap:wrap;gap:8px}
+}
+@media(max-width:850px){
+ .creator .layout,.creator .layout[data-chat-wide=true]{display:block}
+ .creator .assistant{height:calc(100dvh - 190px);min-height:520px;position:static}
+ .creator .preview{height:calc(100dvh - 270px);min-height:400px}
+ .creator .expandChat{display:none}
+ .creator .messages{padding:14px;min-height:120px}
+ .creator .composer textarea{font-size:16px;min-height:100px;max-height:180px}
+ .creator .composer{padding:10px 12px max(12px,env(safe-area-inset-bottom))}
+}
+@media(max-height:740px){
+ .creator .assistant{min-height:460px}
+ .creator .composer textarea{min-height:82px;max-height:140px}
+ .creator .settings{max-height:150px}
+}
+
+.creator .settingsPanel{position:absolute;top:60px;left:8px;right:8px;z-index:3;max-height:calc(100% - 76px);overflow:auto;border:1px solid var(--line);border-radius:12px;background:white;box-shadow:0 12px 35px #20344b30}
+.creator .settingsPanel .settings{max-height:none;overflow:visible}
+.settingsTitle{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);font-size:14px}
+.settingsTitle button{font-size:12px;min-height:36px}
+@media(max-width:850px){.creator .assistant{position:relative;top:auto}}

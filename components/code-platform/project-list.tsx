@@ -53,7 +53,7 @@ export function CodeProjectList() {
       {creating&&<form onSubmit={start}>
         <p>「島の工房」をひな形にして、すぐ試遊できます。</p>
         <label>作品名<input value={title} maxLength={60} disabled={busy} onChange={e=>setTitle(e.target.value)} required/></label>
-        <button className="primary" type="submit" disabled={busy||!title.trim()}>{busy?'準備中…':'試遊しながら作る'}</button>
+        <button className="primary" type="submit" disabled={busy||!title.trim()}>{busy?'準備中…':'制作を始める'}</button>
       </form>}
       {error&&<p role="alert">{error}</p>}
       {projects===null&&!error&&<p role="status">作品を読み込んでいます…</p>}

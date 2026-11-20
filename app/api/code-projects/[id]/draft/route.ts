@@ -1,3 +1,4 @@
+import {reviewReturnedSource} from '../../../../../server/code-platform/handoff.ts';
 import {compileLocalPreview} from '../../../../../server/code-platform/local-preview.ts';
 import {resolveAIConnection,type AIEnvironment} from '../../../../../server/code-platform/ai-providers.ts';
 import {env} from 'cloudflare:workers';
@@ -17,6 +18,12 @@ export async function POST(r:Request,{params}:{params:Promise<{id:string}>}){try
  if(c.expectedRevision!==draft.revision)throw new RuleError('STALE_STATE','作品が更新されました。再読み込みして確認してください');
  if(c.type==='save')return response({draft:await saveDraft(codeStore,draftStore,id,u.id,c)});
  if(c.type==='local-preview')return response({preview:compileLocalPreview(draft.files)});
+ if(c.type==='review'||c.type==='import'){
+  const result=reviewReturnedSource(draft.files,c.files,c.baseDigest),preview=compileLocalPreview(result.files);
+  if(c.type==='review')return response({...result,preview});
+  const next=await saveDraft(codeStore,draftStore,id,u.id,{files:result.files,expectedRevision:draft.revision,summary:'外部で制作した変更を試遊して採用',request:draft.request});
+  return response({draft:next,changed:result.changed,preview});
+ }
  if(c.type==='generate'){
   if(c.mode!==undefined&&c.mode!=='consult'&&c.mode!=='edit')throw new RuleError('INPUT','相談か改良を選んでください');
   const config=env as unknown as AIEnvironment,connection=resolveAIConnection(c.ai,config),day=new Date().toISOString().slice(0,10);

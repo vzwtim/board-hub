@@ -11,7 +11,7 @@ export default function Studio() {
         <div><MobileBrand/><h1>ゲーム制作</h1></div>
         <AccountAvatar/>
       </header>
-      <p className="workspace-lede">ゲームを遊びながら、AIに相談したり、ルールや画面を変えたりできます。</p>
+      <p className="workspace-lede">改良したいことを依頼して、できあがった版を試遊。気に入った変更を採用できます。</p>
       <CodeProjectList/>
       <details className="panel">
         <summary>制作ツール・技術資料</summary>

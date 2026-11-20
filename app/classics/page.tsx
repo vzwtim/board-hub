@@ -2,6 +2,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {BookOpen,RotateCcw,RotateCw,Flag} from 'lucide-react';
 import {Chess} from 'chess.js';
+import ClassicsBot from '../../lib/classics-bot.worker?worker';
 import {applyAction,createState,joinState} from '../../engine/core.ts';
 import type {PlayerID} from '../../engine/types.ts';
 import {definition,legal,turnOf,type Kind,type State,type Action} from '../../games/classics/index.ts';
@@ -28,7 +29,7 @@ export default function ClassicsPage(){
  const board=state.board,me:PlayerID=mode==='table'?state.currentPlayer:'0',active=ready&&mode!=='menu'&&state.phase==='playing'&&state.currentPlayer===me&&!thinking;
  const moves=useMemo(()=>state.phase==='playing'?legal(board):[],[board,state.phase]);
  useEffect(()=>{setSelected(null);setDrop(null);setChoices([])},[state.revision]);
- useEffect(()=>{if(!ready||mode!=='cpu'||state.phase!=='playing'||state.currentPlayer!=='1'||rules)return;let stopped=false;setThinking(true);const worker=new Worker(new URL('../../lib/classics-bot.worker.ts',import.meta.url),{type:'module'});const timer=setTimeout(()=>worker.postMessage({board:state.board,revision:state.revision}),350);worker.onmessage=e=>{if(stopped||e.data.revision!==current.current.revision)return;if(e.data.error){setError(e.data.error);setThinking(false);return}try{setState(s=>applyAction(definition(kind),s,{id:actionID(),expectedRevision:s.revision,playerID:'1',payload:e.data.action}))}catch(e){setError((e as Error).message)}finally{setThinking(false)}};worker.onerror=()=>{if(!stopped){setError('CPUの処理に失敗しました。対戦を再開するか、一手戻してお試しください。');setThinking(false)}};return()=>{stopped=true;clearTimeout(timer);worker.terminate();setThinking(false)}},[ready,mode,state.revision,kind,rules]);
+ useEffect(()=>{if(!ready||mode!=='cpu'||state.phase!=='playing'||state.currentPlayer!=='1'||rules)return;let stopped=false;setThinking(true);let worker:Worker;try{worker=new ClassicsBot()}catch{setError('CPUを読み込めませんでした。再読み込みするか、同じ画面での2人対戦をご利用ください。');setThinking(false);return}const timer=setTimeout(()=>worker.postMessage({board:state.board,revision:state.revision}),350);worker.onmessage=e=>{if(stopped||e.data.revision!==current.current.revision)return;if(e.data.error){setError(e.data.error);setThinking(false);return}try{setState(s=>applyAction(definition(kind),s,{id:actionID(),expectedRevision:s.revision,playerID:'1',payload:e.data.action}))}catch(e){setError((e as Error).message)}finally{setThinking(false)}};worker.onerror=()=>{if(!stopped){setError('CPUの処理に失敗しました。対戦を再開するか、一手戻してお試しください。');setThinking(false)}};return()=>{stopped=true;clearTimeout(timer);worker.terminate();setThinking(false)}},[ready,mode,state.revision,kind,rules]);
  function act(action:Action){if(!active)return;try{undo.current.push(structuredClone(state));undo.current=undo.current.slice(-60);setState(applyAction(definition(kind),state,{id:actionID(),expectedRevision:state.revision,playerID:state.currentPlayer,payload:action}));setError('')}catch(e){undo.current.pop();setError((e as Error).message)}}
  const cells:(Piece|{role:string;owner:PlayerID;promoted:boolean}|null)[]=board.kind==='shogi'?board.cells:new Chess(board.fen).board().flat().map(p=>p?{role:p.type,owner:p.color==='w'?'0':'1',promoted:false}:null);
  const n=kind==='shogi'?9:8,display=Array.from({length:n*n},(_,i)=>flipped?n*n-1-i:i);
